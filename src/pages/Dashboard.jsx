@@ -12,7 +12,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Line, Bar, Doughnut, Chart } from 'react-chartjs-2';
+import { Line, Bar, Chart } from 'react-chartjs-2';
 import * as XLSX from 'xlsx';
 
 ChartJS.register(
@@ -455,15 +455,6 @@ export default function App() {
     plugins: { legend: { labels: { color: textColor } } }
   };
 
-  const chartDespesasData = {
-    labels: ['Administrativo e Infra', 'Operacional', 'Comercial e Ads'],
-    datasets: [{
-        data: [dashboardData.kpis.totalSaidas * 0.5, dashboardData.kpis.totalSaidas * 0.35, dashboardData.kpis.totalSaidas * 0.15],
-        backgroundColor: ['#8b5cf6', '#f59e0b', '#10b981'],
-        borderWidth: 0
-    }]
-  };
-
   return (
     <>
       <header>
@@ -570,7 +561,7 @@ export default function App() {
             </div>
         </div>
 
-        <div className="grid-row grid-2">
+        <div className="grid-row">
             <div className="card">
                 <div className="card-header">
                     <span className="card-title"><i className="fa-solid fa-chart-bar"></i> Faturamento por Parceiro</span>
@@ -590,17 +581,6 @@ export default function App() {
                             </div>
                         );
                     }) : 'Sem dados'}
-                </div>
-            </div>
-
-            <div className="card">
-                <div className="card-header">
-                    <span className="card-title"><i className="fa-solid fa-chart-pie"></i> Análise de Despesas</span>
-                </div>
-                <div className="doughnut-wrapper">
-                    <div className="doughnut-container">
-                        <Doughnut data={chartDespesasData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { color: textColor } } } }} />
-                    </div>
                 </div>
             </div>
         </div>
