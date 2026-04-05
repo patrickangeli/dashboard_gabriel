@@ -647,12 +647,12 @@ export default function App() {
                             placeholder="Buscar parceiro ou serviço..." 
                             value={searchProjeto}
                             onChange={(e) => setSearchProjeto(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', minWidth: '200px' }}
+                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-color)', color: 'var(--text-main)', minWidth: '200px' }}
                         />
                         <select 
                             value={filterStatusProjeto}
                             onChange={(e) => setFilterStatusProjeto(e.target.value)}
-                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)' }}
+                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border)', background: 'var(--bg-color)', color: 'var(--text-main)' }}
                         >
                             <option value="all">Todos os Status</option>
                             <option value="em-andamento">Em Andamento</option>
