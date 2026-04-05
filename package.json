@@ -6,7 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "concurrently \"vite\" \"node server.mjs\"",
-    "build": "vite build",
+    "build": "npx prisma generate && vite build",
     "preview": "vite preview"
   },
   "repository": {
