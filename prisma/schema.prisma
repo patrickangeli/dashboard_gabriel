@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Projeto {
+  id             Int         @id @default(autoincrement())
+  cliente        String
+  servico        String?
+  status         String      @default("Em Andamento")
+  valorFechado   Decimal     @db.Decimal(10, 2)
+  criadoEm       DateTime    @default(now())
+  atualizadoEm   DateTime    @updatedAt
+  
+  transacoes     Transacao[]
+}
+
+model Transacao {
+  id             Int       @id @default(autoincrement())
+  projetoId      Int?
+  projeto        Projeto?  @relation(fields: [projetoId], references: [id])
+  tipo           TipoTransacao
+  valor          Decimal   @db.Decimal(10, 2)
+  dataPagamento  DateTime
+  categoria      String?
+  descricao      String?
+  criadoEm       DateTime  @default(now())
+}
+
+model PrevisaoCaixa {
+  id             Int       @id @default(autoincrement())
+  tipo           TipoTransacao
+  valor          Decimal   @db.Decimal(10, 2)
+  dataPrevista   DateTime
+  categoria      String?
+  descricao      String?
+  criadoEm       DateTime  @default(now())
+}
+
+enum TipoTransacao {
+  ENTRADA
+  SAIDA
+}

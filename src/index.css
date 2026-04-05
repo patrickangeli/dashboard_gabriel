@@ -27,11 +27,9 @@ header { background: var(--header-bg); color: white; padding: 30px 20px 80px 20p
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-2 { grid-template-columns: 1fr 1fr; }
-@media (max-width: 1024px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 768px) { .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; } }
 
-.card { background: var(--card-bg); border-radius: var(--card-radius); padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); }
-.card-header { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: 600; color: var(--text-heading); align-items: center; }
+.card { background: var(--card-bg); border-radius: var(--card-radius); padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); overflow: hidden; }
+.card-header { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: 600; color: var(--text-heading); align-items: center; flex-wrap: wrap; gap: 10px;}
 
 /* KPI Cards */
 .kpi-card { display: flex; align-items: center; gap: 20px; padding: 24px; }
@@ -95,3 +93,38 @@ footer { text-align: center; padding: 40px 20px; color: var(--text-muted); font-
 .theme-toggle { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; border-radius: 8px; padding: 8px 12px; cursor: pointer; transition: 0.2s; font-size: 18px; }
 .theme-toggle:hover { background: rgba(255,255,255,0.1); }
 body.dark-mode .theme-toggle { color: #facc15; border-color: rgba(255,255,255,0.1); }
+
+/* MEDIA QUERIES NA BASE DO ARQUIVO PARA OVERRIDE CORRETO */
+@media (max-width: 1024px) { 
+    .grid-4 { grid-template-columns: repeat(2, 1fr); } 
+}
+
+@media (max-width: 768px) { 
+    .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; } 
+    .header-content { flex-direction: column; text-align: center; gap: 20px; }
+    .header-actions { justify-content: center; width: 100%; flex-wrap: wrap; }
+    
+    .bar-chart { width: 100%; align-items: stretch !important; gap: 24px; }
+    .bar-row { flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; }
+    .bar-track { width: 100%; overflow: visible !important; }
+    .bar-fill { overflow: visible !important; min-width: max-content; padding: 0 12px; border-radius: 8px; justify-content: center; }
+    
+    /* AQUI A CORREÇAO DO NOME! */
+    .bar-label { 
+        text-align: right; 
+        flex: none; 
+        font-size: 13px; 
+        width: 100%; 
+        color: var(--text-muted); 
+        padding-top: 2px;
+        order: 2; /* Coloca titulo EMBAIXO da barra! */
+    }
+
+    .doughnut-wrapper { flex-direction: column; }
+    .container { margin-top: -20px; }
+    .kpi-card { flex-direction: column; text-align: center; padding: 20px; }
+    .kpi-info { align-items: center; }
+    .card { padding: 16px; }
+    .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    nav { flex-direction: column; text-align: center; }
+}
