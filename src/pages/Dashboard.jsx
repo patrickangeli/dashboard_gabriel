@@ -654,7 +654,13 @@ export default function App() {
       </div>
 
       <footer>
-        <p>Desenvolvido para Gestão Interna • Arquitetura planeada via Dashboard</p>
+        <p>
+          Desenvolvido por{' '}
+          <a href="https://github.com/patrickangeli" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', color: 'inherit', textDecoration: 'none', fontWeight: 600, transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = '#3b82f6'} onMouseOut={(e) => e.currentTarget.style.color = 'inherit'}>
+            <i className="fa-brands fa-github" style={{ fontSize: '18px' }}></i>
+            patrickangeli
+          </a>
+        </p>
       </footer>
     </>
   );
