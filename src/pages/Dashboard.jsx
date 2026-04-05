@@ -61,6 +61,8 @@ export default function App() {
   const [filterPreset, setFilterPreset] = useState('all');
   const [filterMetric, setFilterMetric] = useState('valorFechado');
   const [filterFlowType, setFilterFlowType] = useState('line');
+  const [searchProjeto, setSearchProjeto] = useState('');
+  const [filterStatusProjeto, setFilterStatusProjeto] = useState('all');
 
   useEffect(() => {
     document.body.classList.toggle('dark-mode', isDarkMode);
@@ -290,6 +292,8 @@ export default function App() {
   const clearFilters = () => {
     setFilterMetric('valorFechado');
     setFilterFlowType('line');
+    setSearchProjeto('');
+    setFilterStatusProjeto('all');
     handlePresetChange('all');
   };
 
@@ -341,6 +345,17 @@ export default function App() {
   const topProjetos = useMemo(() => {
     return [...filteredRegistros].sort((a, b) => b.valorFechado - a.valorFechado);
   }, [filteredRegistros]);
+
+  const filteredProjetos = useMemo(() => {
+    return topProjetos.filter(reg => {
+      const matchSearch = reg.parceiro.toLowerCase().includes(searchProjeto.toLowerCase()) || 
+                          (reg.servico || '').toLowerCase().includes(searchProjeto.toLowerCase());
+      const statusValue = reg.valorRestante > 0 ? 'em-andamento' : 'concluido';
+      const matchStatus = filterStatusProjeto === 'all' || statusValue === filterStatusProjeto;
+      
+      return matchSearch && matchStatus;
+    });
+  }, [topProjetos, searchProjeto, filterStatusProjeto]);
 
   // Chart styling
   const textColor = isDarkMode ? '#cbd5e1' : '#64748b';
@@ -624,8 +639,26 @@ export default function App() {
 
         <div className="grid-row">
             <div className="card">
-                <div className="card-header">
+                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
                     <span className="card-title"><i className="fa-solid fa-list-check"></i> Status dos Projetos</span>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input 
+                            type="text" 
+                            placeholder="Buscar parceiro ou serviço..." 
+                            value={searchProjeto}
+                            onChange={(e) => setSearchProjeto(e.target.value)}
+                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)', minWidth: '200px' }}
+                        />
+                        <select 
+                            value={filterStatusProjeto}
+                            onChange={(e) => setFilterStatusProjeto(e.target.value)}
+                            style={{ padding: '6px 10px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--card-bg)', color: 'var(--text-color)' }}
+                        >
+                            <option value="all">Todos os Status</option>
+                            <option value="em-andamento">Em Andamento</option>
+                            <option value="concluido">Concluído</option>
+                        </select>
+                    </div>
                 </div>
                 <div className="table-container">
                     <table>
@@ -638,7 +671,7 @@ export default function App() {
                             </tr>
                         </thead>
                         <tbody>
-                            {topProjetos.map((reg, idx) => (
+                            {filteredProjetos.map((reg, idx) => (
                                 <tr key={idx}>
                                     <td><span className="client-name">{reg.parceiro}</span></td>
                                     <td>{reg.servico || 'N/A'}</td>
