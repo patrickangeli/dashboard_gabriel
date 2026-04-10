@@ -147,11 +147,11 @@ export default function InsertData() {
                   <div className="grid-row grid-2">
                     <div className="control-group">
                       <label>Status</label>
-                      <select name="status" defaultValue="Em Andamento">
-                        <option value="Em Andamento">Em Andamento</option>
+                      <select name="status" defaultValue="Serviço Fechado">
+                        <option value="Serviço Fechado">Serviço Fechado</option>
+                        <option value="Em Elaboração">Em Elaboração</option>
+                        <option value="Em Análise Órgão">Em Análise Órgão</option>
                         <option value="Concluído">Concluído</option>
-                        <option value="Cancelado">Cancelado</option>
-                        <option value="Pausado">Pausado</option>
                       </select>
                     </div>
                     <div className="control-group">
