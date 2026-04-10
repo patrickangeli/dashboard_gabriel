@@ -12,7 +12,7 @@ import {
   Legend,
   Filler
 } from 'chart.js';
-import { Line, Bar, Chart } from 'react-chartjs-2';
+import { Line, Bar, Chart, Doughnut } from 'react-chartjs-2';
 import * as XLSX from 'xlsx';
 
 ChartJS.register(
@@ -452,6 +452,81 @@ export default function App() {
     };
   }, [previsaoRegistros, filterDe, filterAte]);
 
+  // Categorias Previsao
+  const previsaoPorCategoria = useMemo(() => {
+    let entradasCat = {};
+    let saidasCat = {};
+
+    let filteredPrevisao = previsaoRegistros;
+    if (filterDe || filterAte) {
+        filteredPrevisao = previsaoRegistros.filter(linha => {
+           const chaves = Object.keys(linha);
+           const keyData = chaves.find(chave => ['DATA', 'MES', 'VENCIMENTO', 'COMPETENCIA'].some(kw => chave.includes(kw)));
+           const dateVal = parseDataParaMes(keyData ? linha[keyData] : undefined)?.chave;
+           if (!dateVal) return true;
+           if (filterDe && dateVal < filterDe) return false;
+           if (filterAte && dateVal > filterAte) return false;
+           return true;
+        });
+    }
+
+    filteredPrevisao.forEach(linha => {
+        const chaves = Object.keys(linha);
+        const keyCategoria = chaves.find(chave => ['CATEGORIA', 'TIPO', 'CLASSIFICA'].some(kw => chave.includes(kw)));
+        const keyTipo = chaves.find(chave => ['TIPO', 'NATUREZA'].some(kw => chave.includes(kw)));
+        
+        let valor = 0;
+        let txt = String(linha['VALOR'] || linha['TOTAL'] || '0').replace(/[R$\s]/g, '');
+        if (txt.includes(',') && txt.includes('.')) txt = txt.replace(/\./g, '').replace(',', '.');
+        else if (txt.includes(',')) txt = txt.replace(',', '.');
+        valor = Number(txt) || 0;
+
+        let isEntrada = false;
+        let isSaida = false;
+
+        const tipoStr = String(linha[keyTipo] || linha['TIPO']).toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+        if (['ENTRADA', 'RECEITA'].some(k => tipoStr.includes(k))) isEntrada = true;
+        else if (['SAIDA', 'DESPESA', 'CUSTO'].some(k => tipoStr.includes(k))) isSaida = true;
+        else if (valor > 0) isEntrada = true;
+        else if (valor < 0) { isSaida = true; valor = Math.abs(valor); }
+
+        const catName = keyCategoria && linha[keyCategoria] ? String(linha[keyCategoria]).trim().toUpperCase() : 'OUTROS';
+
+        if (isEntrada) {
+            entradasCat[catName] = (entradasCat[catName] || 0) + valor;
+        } else if (isSaida) {
+            saidasCat[catName] = (saidasCat[catName] || 0) + valor;
+        }
+    });
+
+    return {
+        entradas: Object.entries(entradasCat).filter(e => e[1] > 0).sort((a,b) => b[1]-a[1]),
+        saidas: Object.entries(saidasCat).filter(e => e[1] > 0).sort((a,b) => b[1]-a[1])
+    };
+  }, [previsaoRegistros, filterDe, filterAte]);
+
+  const corDoughnut = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
+  const corDoughnutSaida = ['#ef4444', '#f97316', '#f43f5e', '#a855f7', '#6366f1', '#ec4899', '#d946ef'];
+
+  const chartEntradasCatData = {
+    labels: previsaoPorCategoria.entradas.map(e => e[0]),
+    datasets: [{
+        data: previsaoPorCategoria.entradas.map(e => e[1]),
+        backgroundColor: corDoughnut,
+        borderWidth: 0
+    }]
+  };
+
+  const chartSaidasCatData = {
+    labels: previsaoPorCategoria.saidas.map(e => e[0]),
+    datasets: [{
+        data: previsaoPorCategoria.saidas.map(e => e[1]),
+        backgroundColor: corDoughnutSaida,
+        borderWidth: 0
+    }]
+  };
+
   const chartPrevisaoCaixaData = dadosPrevisaoCaixa ? {
     labels: dadosPrevisaoCaixa.meses,
     datasets: [
@@ -636,6 +711,50 @@ export default function App() {
                 </div>
             )}
         </div>
+
+        {previsaoRegistros.length > 0 && (
+          <div className="grid-row grid-2">
+            <div className="card">
+                <div className="card-header">
+                    <span className="card-title"><i className="fa-solid fa-chart-pie"></i> Previsão de Entradas por Categoria</span>
+                </div>
+                <div className="doughnut-wrapper">
+                    <div className="doughnut-container">
+                        <Doughnut data={chartEntradasCatData} options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }} />
+                    </div>
+                    <ul className="doughnut-legend">
+                        {previsaoPorCategoria.entradas.length === 0 && <li>Sem lançamentos</li>}
+                        {previsaoPorCategoria.entradas.map((cat, i) => (
+                            <li key={cat[0]}>
+                                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: corDoughnut[i % corDoughnut.length], marginRight: '8px' }}></span>
+                                {cat[0]}: {formatarMoeda(cat[1])}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+
+            <div className="card">
+                <div className="card-header">
+                    <span className="card-title"><i className="fa-solid fa-chart-pie"></i> Previsão de Saídas por Categoria</span>
+                </div>
+                <div className="doughnut-wrapper">
+                    <div className="doughnut-container">
+                        <Doughnut data={chartSaidasCatData} options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }} />
+                    </div>
+                    <ul className="doughnut-legend">
+                        {previsaoPorCategoria.saidas.length === 0 && <li>Sem lançamentos</li>}
+                        {previsaoPorCategoria.saidas.map((cat, i) => (
+                            <li key={cat[0]}>
+                                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: corDoughnutSaida[i % corDoughnutSaida.length], marginRight: '8px' }}></span>
+                                {cat[0]}: {formatarMoeda(cat[1])}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+          </div>
+        )}
 
         <div className="grid-row">
             <div className="card">

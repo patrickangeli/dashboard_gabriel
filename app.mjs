@@ -49,13 +49,29 @@ router.get('/dashboard', async (req, res) => {
       where: { projetoId: null }
     });
 
+    // Como as saídas e despesas do escritório geralmente são registradas 
+    // no módulo de Previsão de Caixa, vamos importá-las para o fluxo total também
+    const previsoesSaida = await prisma.previsaoCaixa.findMany({
+      where: { tipo: 'SAIDA' }
+    });
+
     const avulsosPorMes = {};
+    
+    // Processa transações soltas
     transacoesAvulsas.forEach(t => {
       const mes = t.dataPagamento ? t.dataPagamento.toISOString().substring(0, 7) : t.criadoEm.toISOString().substring(0, 7);
       if (!avulsosPorMes[mes]) avulsosPorMes[mes] = { entrada: 0, saida: 0 };
       
       if (t.tipo === 'ENTRADA') avulsosPorMes[mes].entrada += Number(t.valor);
       if (t.tipo === 'SAIDA') avulsosPorMes[mes].saida += Number(t.valor);
+    });
+
+    // Processa saídas do caixa
+    previsoesSaida.forEach(p => {
+      const mes = p.dataPrevista ? p.dataPrevista.toISOString().substring(0, 7) : p.criadoEm.toISOString().substring(0, 7);
+      if (!avulsosPorMes[mes]) avulsosPorMes[mes] = { entrada: 0, saida: 0 };
+      
+      avulsosPorMes[mes].saida += Number(p.valor);
     });
 
     Object.keys(avulsosPorMes).forEach((mes, idx) => {
