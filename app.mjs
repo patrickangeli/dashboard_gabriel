@@ -45,6 +45,33 @@ router.get('/dashboard', async (req, res) => {
       };
     });
 
+    const transacoesAvulsas = await prisma.transacao.findMany({
+      where: { projetoId: null }
+    });
+
+    const avulsosPorMes = {};
+    transacoesAvulsas.forEach(t => {
+      const mes = t.dataPagamento ? t.dataPagamento.toISOString().substring(0, 7) : t.criadoEm.toISOString().substring(0, 7);
+      if (!avulsosPorMes[mes]) avulsosPorMes[mes] = { entrada: 0, saida: 0 };
+      
+      if (t.tipo === 'ENTRADA') avulsosPorMes[mes].entrada += Number(t.valor);
+      if (t.tipo === 'SAIDA') avulsosPorMes[mes].saida += Number(t.valor);
+    });
+
+    Object.keys(avulsosPorMes).forEach((mes, idx) => {
+      registros.push({
+        id: `avulsos-${idx}`,
+        parceiro: 'Lançamentos Avulsos (Sem Projeto)',
+        servico: 'Despesas e Receitas Gerais',
+        status: 'Contábil',
+        valorFechado: 0,
+        entrada: avulsosPorMes[mes].entrada,
+        saida: avulsosPorMes[mes].saida,
+        valorRestante: 0,
+        mesChave: mes
+      });
+    });
+
     res.json(registros);
   } catch (err) {
     console.error(err);
