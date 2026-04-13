@@ -173,7 +173,7 @@ export default function InsertData() {
                     <label>Projeto Vinculado *</label>
                     <select name="projetoId" required defaultValue="">
                       <option value="" disabled>-- Selecione o Projeto --</option>
-                      {projetos.map(p => (
+                      {[...projetos].sort((a, b) => (a.parceiro || '').localeCompare(b.parceiro || '')).map(p => (
                         <option key={p.id} value={p.id}>{p.parceiro} - {p.servico}</option>
                       ))}
                     </select>
