@@ -35,7 +35,11 @@ const formatarMoeda = (valor) => {
 };
 
 const formatarMesChave = (chave) => {
-  const [ano, mes] = String(chave).split('-');
+  const partes = String(chave).split('-');
+  if (partes.length === 3) {
+    return `${partes[2]}/${partes[1]}/${String(partes[0]).slice(-2)}`;
+  }
+  const [ano, mes] = partes;
   return `${mes}/${String(ano).slice(-2)}`;
 };
 
@@ -58,6 +62,8 @@ export default function App() {
   // Filters State
   const [filterDe, setFilterDe] = useState('');
   const [filterAte, setFilterAte] = useState('');
+  const [appliedDe, setAppliedDe] = useState('');
+  const [appliedAte, setAppliedAte] = useState('');
   const [filterPreset, setFilterPreset] = useState('all');
   const [filterMetric, setFilterMetric] = useState('valorFechado');
   const [filterFlowType, setFilterFlowType] = useState('line');
@@ -274,19 +280,34 @@ export default function App() {
   const handlePresetChange = (preset) => {
     setFilterPreset(preset);
     const hoje = new Date();
-    if (preset === 'this-year') {
-        setFilterDe(`${hoje.getFullYear()}-01`);
-        setFilterAte(`${hoje.getFullYear()}-12`);
-    } else if (preset === 'last-12') {
-        const fim = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const inicio = new Date(fim);
-        inicio.setMonth(inicio.getMonth() - 11);
-        setFilterDe(`${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}`);
-        setFilterAte(`${fim.getFullYear()}-${String(fim.getMonth() + 1).padStart(2, '0')}`);
+    
+    const dStr = (d) => d.toISOString().substring(0, 10);
+    
+    if (preset === 'this-month') {
+        const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        setFilterDe(dStr(primeiroDia));
+        setFilterAte(dStr(ultimoDia));
+    } else if (preset === 'this-week') {
+        const diaSemana = hoje.getDay();
+        const domingo = new Date(hoje);
+        domingo.setDate(hoje.getDate() - diaSemana);
+        const sabado = new Date(domingo);
+        sabado.setDate(domingo.getDate() + 6);
+        setFilterDe(dStr(domingo));
+        setFilterAte(dStr(sabado));
+    } else if (preset === 'today') {
+        setFilterDe(dStr(hoje));
+        setFilterAte(dStr(hoje));
     } else if (preset === 'all') {
         setFilterDe('');
         setFilterAte('');
     }
+  };
+
+  const aplicarFiltros = () => {
+    setAppliedDe(filterDe);
+    setAppliedAte(filterAte);
   };
 
   const clearFilters = () => {
@@ -295,6 +316,33 @@ export default function App() {
     setSearchProjeto('');
     setFilterStatusProjeto('all');
     handlePresetChange('all');
+    setAppliedDe('');
+    setAppliedAte('');
+  };
+
+  const downloadCSV = () => {
+    if (filteredRegistros.length === 0) return;
+    const headers = Object.keys(filteredRegistros[0]);
+    const csvContent = [
+      headers.join(';'),
+      ...filteredRegistros.map(reg => headers.map(h => {
+        let val = reg[h] !== null && reg[h] !== undefined ? String(reg[h]) : '';
+        if (val.includes(';') || val.includes('\n') || val.includes('"')) {
+            val = '"' + val.replace(/"/g, '""') + '"';
+        }
+        return val;
+      }).join(';'))
+    ].join('\n');
+    
+    // Add BOM for Excel readability in UTF-8
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "dados_dashboard.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Apply filters logic
@@ -302,12 +350,12 @@ export default function App() {
     const existeDataValida = registros.some(reg => Boolean(reg.mesChave));
     if (!existeDataValida) return registros;
     return registros.filter(reg => {
-        if (!reg.mesChave) return !filterDe && !filterAte;
-        if (filterDe && reg.mesChave < filterDe) return false;
-        if (filterAte && reg.mesChave > filterAte) return false;
+        if (!reg.mesChave) return !appliedDe && !appliedAte;
+        if (appliedDe && reg.mesChave < appliedDe) return false;
+        if (appliedAte && reg.mesChave > appliedAte) return false;
         return true;
     });
-  }, [registros, filterDe, filterAte]);
+  }, [registros, appliedDe, appliedAte]);
 
   const dashboardData = useMemo(() => {
     const kpis = { faturamentoTotal: 0, aReceber: 0, totalEntradas: 0, totalSaidas: 0 };
@@ -393,14 +441,14 @@ export default function App() {
     };
 
     let filteredPrevisao = previsaoRegistros;
-    if (filterDe || filterAte) {
+    if (appliedDe || appliedAte) {
         filteredPrevisao = previsaoRegistros.filter(linha => {
            const chaves = Object.keys(linha);
            const keyData = chaves.find(chave => ['DATA', 'MES', 'VENCIMENTO', 'COMPETENCIA'].some(kw => chave.includes(kw)));
            const dateVal = parseDataParaMes(keyData ? linha[keyData] : undefined)?.chave;
            if (!dateVal) return true; // keep items without date
-           if (filterDe && dateVal < filterDe) return false;
-           if (filterAte && dateVal > filterAte) return false;
+           if (appliedDe && dateVal < appliedDe) return false;
+           if (appliedAte && dateVal > appliedAte) return false;
            return true;
         });
     }
@@ -450,7 +498,7 @@ export default function App() {
         saidas: saidasPrevisao,
         saldos: saldosPrevisao
     };
-  }, [previsaoRegistros, filterDe, filterAte]);
+  }, [previsaoRegistros, appliedDe, appliedAte]);
 
   // Categorias Previsao
   const previsaoPorCategoria = useMemo(() => {
@@ -458,14 +506,14 @@ export default function App() {
     let saidasCat = {};
 
     let filteredPrevisao = previsaoRegistros;
-    if (filterDe || filterAte) {
+    if (appliedDe || appliedAte) {
         filteredPrevisao = previsaoRegistros.filter(linha => {
            const chaves = Object.keys(linha);
            const keyData = chaves.find(chave => ['DATA', 'MES', 'VENCIMENTO', 'COMPETENCIA'].some(kw => chave.includes(kw)));
            const dateVal = parseDataParaMes(keyData ? linha[keyData] : undefined)?.chave;
            if (!dateVal) return true;
-           if (filterDe && dateVal < filterDe) return false;
-           if (filterAte && dateVal > filterAte) return false;
+           if (appliedDe && dateVal < appliedDe) return false;
+           if (appliedAte && dateVal > appliedAte) return false;
            return true;
         });
     }
@@ -504,7 +552,7 @@ export default function App() {
         entradas: Object.entries(entradasCat).filter(e => e[1] > 0).sort((a,b) => b[1]-a[1]),
         saidas: Object.entries(saidasCat).filter(e => e[1] > 0).sort((a,b) => b[1]-a[1])
     };
-  }, [previsaoRegistros, filterDe, filterAte]);
+  }, [previsaoRegistros, appliedDe, appliedAte]);
 
   const corDoughnut = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
   const corDoughnutSaida = ['#ef4444', '#f97316', '#f43f5e', '#a855f7', '#6366f1', '#ec4899', '#d946ef'];
@@ -605,19 +653,20 @@ export default function App() {
             </div>
             <div className="controls-card">
                 <div className="control-group">
-                    <label>De (mês)</label>
-                    <input type="month" value={filterDe} onChange={e => { setFilterDe(e.target.value); setFilterPreset('custom'); }} />
+                    <label>De (Dia)</label>
+                    <input type="date" value={filterDe} onChange={e => { setFilterDe(e.target.value); setFilterPreset('custom'); }} />
                 </div>
                 <div className="control-group">
-                    <label>Até (mês)</label>
-                    <input type="month" value={filterAte} onChange={e => { setFilterAte(e.target.value); setFilterPreset('custom'); }} />
+                    <label>Até (Dia)</label>
+                    <input type="date" value={filterAte} onChange={e => { setFilterAte(e.target.value); setFilterPreset('custom'); }} />
                 </div>
                 <div className="control-group">
                     <label>Atalho de período</label>
                     <select value={filterPreset} onChange={e => handlePresetChange(e.target.value)}>
-                        <option value="this-year">Este ano</option>
-                        <option value="last-12">Últimos 12 meses</option>
-                        <option value="all">Todo histórico</option>
+                        <option value="this-month">Este Mês</option>
+                        <option value="this-week">Esta Semana</option>
+                        <option value="today">Hoje</option>
+                        <option value="all">Todo Histórico</option>
                         <option value="custom">Personalizado</option>
                     </select>
                 </div>
@@ -638,16 +687,16 @@ export default function App() {
                     </select>
                 </div>
                 <div className="actions-row">
+                    <button className="btn btn-primary" onClick={aplicarFiltros} title="Aplicar Filtros">Aplicar Filtros</button>
                     <button className="btn btn-secondary" onClick={clearFilters} title="Limpar Filtros"><i className="fa-solid fa-eraser"></i></button>
-                    <label className="btn btn-secondary" style={{ cursor: 'pointer', margin: 0 }}>
-                        <i className="fa-solid fa-file-excel"></i>
-                        <input type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleFileUpload} />
-                    </label>
+                    <button className="btn btn-secondary" onClick={downloadCSV} title="Baixar CSV" style={{ margin: 0 }}>
+                        <i className="fa-solid fa-file-csv"></i>
+                    </button>
                 </div>
             </div>
             <div className="filter-status">
-                <strong>Período: {filterDe ? formatarMesChave(filterDe) : 'Início'} a {filterAte ? formatarMesChave(filterAte) : 'Fim'}</strong>
-                <span>{filteredRegistros.length} lançamento(s) em {dashboardData.qtdMeses} mês(es) via {fonte}</span>
+                <strong>Período: {appliedDe ? formatarMesChave(appliedDe) : 'Início'} a {appliedAte ? formatarMesChave(appliedAte) : 'Fim'}</strong>
+                <span>{filteredRegistros.length} lançamento(s) em {dashboardData.qtdMeses} dia(s)/mês(es) via {fonte}</span>
             </div>
         </div>
 

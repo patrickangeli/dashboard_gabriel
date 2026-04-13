@@ -19,14 +19,14 @@ router.get('/dashboard', async (req, res) => {
     const registros = projetos.map(p => {
       let entrada = 0;
       let saida = 0;
-      let mesChave = p.criadoEm.toISOString().substring(0, 7);
+      let dataChave = p.criadoEm.toISOString().substring(0, 10);
 
       p.transacoes.forEach(t => {
         if (t.tipo === 'ENTRADA') entrada += Number(t.valor);
         if (t.tipo === 'SAIDA') saida += Number(t.valor);
         
         if (t.dataPagamento) {
-           mesChave = t.dataPagamento.toISOString().substring(0, 7);
+           dataChave = t.dataPagamento.toISOString().substring(0, 10);
         }
       });
 
@@ -41,7 +41,7 @@ router.get('/dashboard', async (req, res) => {
         entrada: entrada,
         saida: saida,
         valorRestante: p.status.toLowerCase() === 'concluído' ? valorFechado : (valorFechado - entrada),
-        mesChave: mesChave
+        mesChave: dataChave // Mantemos o nome mesChave no client para não quebrar tudo, mas agora tem formato YYYY-MM-DD
       };
     });
 
@@ -55,36 +55,36 @@ router.get('/dashboard', async (req, res) => {
       where: { tipo: 'SAIDA' }
     });
 
-    const avulsosPorMes = {};
+    const avulsosPorDia = {};
     
     // Processa transações soltas
     transacoesAvulsas.forEach(t => {
-      const mes = t.dataPagamento ? t.dataPagamento.toISOString().substring(0, 7) : t.criadoEm.toISOString().substring(0, 7);
-      if (!avulsosPorMes[mes]) avulsosPorMes[mes] = { entrada: 0, saida: 0 };
+      const dia = t.dataPagamento ? t.dataPagamento.toISOString().substring(0, 10) : t.criadoEm.toISOString().substring(0, 10);
+      if (!avulsosPorDia[dia]) avulsosPorDia[dia] = { entrada: 0, saida: 0 };
       
-      if (t.tipo === 'ENTRADA') avulsosPorMes[mes].entrada += Number(t.valor);
-      if (t.tipo === 'SAIDA') avulsosPorMes[mes].saida += Number(t.valor);
+      if (t.tipo === 'ENTRADA') avulsosPorDia[dia].entrada += Number(t.valor);
+      if (t.tipo === 'SAIDA') avulsosPorDia[dia].saida += Number(t.valor);
     });
 
     // Processa saídas do caixa
     previsoesSaida.forEach(p => {
-      const mes = p.dataPrevista ? p.dataPrevista.toISOString().substring(0, 7) : p.criadoEm.toISOString().substring(0, 7);
-      if (!avulsosPorMes[mes]) avulsosPorMes[mes] = { entrada: 0, saida: 0 };
+      const dia = p.dataPrevista ? p.dataPrevista.toISOString().substring(0, 10) : p.criadoEm.toISOString().substring(0, 10);
+      if (!avulsosPorDia[dia]) avulsosPorDia[dia] = { entrada: 0, saida: 0 };
       
-      avulsosPorMes[mes].saida += Number(p.valor);
+      avulsosPorDia[dia].saida += Number(p.valor);
     });
 
-    Object.keys(avulsosPorMes).forEach((mes, idx) => {
+    Object.keys(avulsosPorDia).forEach((dia, idx) => {
       registros.push({
         id: `avulsos-${idx}`,
         parceiro: 'Lançamentos Avulsos (Sem Projeto)',
         servico: 'Despesas e Receitas Gerais',
         status: 'Contábil',
         valorFechado: 0,
-        entrada: avulsosPorMes[mes].entrada,
-        saida: avulsosPorMes[mes].saida,
+        entrada: avulsosPorDia[dia].entrada,
+        saida: avulsosPorDia[dia].saida,
         valorRestante: 0,
-        mesChave: mes
+        mesChave: dia
       });
     });
 
