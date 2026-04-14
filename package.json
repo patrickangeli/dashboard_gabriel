@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/patrickangeli/dashboard_gabriel#readme",
   "dependencies": {
+    "@clerk/clerk-react": "^5.61.4",
     "@prisma/client": "^6.19.3",
     "@prisma/config": "^6.19.3",
     "axios": "^1.14.0",
