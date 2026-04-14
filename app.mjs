@@ -37,11 +37,13 @@ router.get('/dashboard', async (req, res) => {
         parceiro: p.cliente,
         servico: p.servico || 'N/A',
         status: p.status,
+        criadoEm: p.criadoEm.toISOString().substring(0, 10),
         valorFechado: valorFechado,
         entrada: entrada,
         saida: saida,
         valorRestante: p.status.toLowerCase() === 'concluído' ? valorFechado : (valorFechado - entrada),
-        mesChave: dataChave // Mantemos o nome mesChave no client para não quebrar tudo, mas agora tem formato YYYY-MM-DD
+        mesChave: dataChave, // Mantemos o nome mesChave no client para não quebrar tudo, mas agora tem formato YYYY-MM-DD
+        transacoes: p.transacoes || []
       };
     });
 
@@ -84,7 +86,8 @@ router.get('/dashboard', async (req, res) => {
         entrada: avulsosPorDia[dia].entrada,
         saida: avulsosPorDia[dia].saida,
         valorRestante: 0,
-        mesChave: dia
+        mesChave: dia,
+        transacoes: []
       });
     });
 

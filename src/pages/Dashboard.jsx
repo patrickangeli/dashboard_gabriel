@@ -34,13 +34,35 @@ const formatarMoeda = (valor) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor || 0));
 };
 
-const formatarMesChave = (chave) => {
+const formatarMesChave = (chave, agrupamento) => {
+  if (agrupamento === 'semanal' && String(chave).includes('-W')) {
+    const partesW = String(chave).split('-W');
+    if (partesW.length === 2) {
+      // Ex: "Semana 12/26" ou "Sem 12/26" - vamos usar "Sem 12/26"
+      return `Sem ${partesW[1]}/${String(partesW[0]).slice(-2)}`;
+    }
+  }
+
   const partes = String(chave).split('-');
   if (partes.length === 3) {
     return `${partes[2]}/${partes[1]}/${String(partes[0]).slice(-2)}`;
   }
   const [ano, mes] = partes;
   return `${mes}/${String(ano).slice(-2)}`;
+};
+
+const getISOWeekKey = (dateStr) => {
+    // Accepts YYYY-MM-DD or YYYY-MM
+    let dateObj = new Date((dateStr.length === 7 ? dateStr + '-01' : dateStr) + 'T00:00:00Z');
+    if (isNaN(dateObj.getTime())) return dateStr.substring(0, 4) + '-W01';
+    const target = new Date(dateObj.valueOf());
+    const dayNr = (dateObj.getUTCDay() + 6) % 7;
+    target.setUTCDate(target.getUTCDate() - dayNr + 3);
+    const firstThursday = target.valueOf();
+    target.setUTCMonth(0, 1);
+    if (target.getUTCDay() !== 4) target.setUTCMonth(0, 1 + ((4 - target.getUTCDay()) + 7) % 7);
+    const weekNumber = 1 + Math.ceil((firstThursday - target) / 604800000);
+    return `${dateObj.getUTCFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
 };
 
 const getMockData = () => [
@@ -57,7 +79,6 @@ export default function App() {
   const [registros, setRegistros] = useState([]);
   const [previsaoRegistros, setPrevisaoRegistros] = useState([]);
   const [fonte, setFonte] = useState('Aguardando...');
-  const [lastUpdate, setLastUpdate] = useState('A aguardar dados...');
 
   // Filters State
   const [filterDe, setFilterDe] = useState('');
@@ -67,8 +88,10 @@ export default function App() {
   const [filterPreset, setFilterPreset] = useState('all');
   const [filterMetric, setFilterMetric] = useState('valorFechado');
   const [filterFlowType, setFilterFlowType] = useState('line');
+  const [filterAgrupamento, setFilterAgrupamento] = useState('mensal');
   const [searchProjeto, setSearchProjeto] = useState('');
   const [filterStatusProjeto, setFilterStatusProjeto] = useState('all');
+  const [searchParceiroGrafico, setSearchParceiroGrafico] = useState('');
 
   useEffect(() => {
     document.body.classList.toggle('dark-mode', isDarkMode);
@@ -210,7 +233,6 @@ export default function App() {
   };
 
   const fetchData = async () => {
-    setLastUpdate('A buscar dados...');
     try {
       const resp = await fetch('/api/dashboard');
       if (!resp.ok) throw new Error('Falha na requisição CORS/HTTP para Dashboard');
@@ -228,7 +250,6 @@ export default function App() {
       setPrevisaoRegistros([]);
       setFonte('Mock Data (Falha de Conexão com API)');
     }
-    setLastUpdate(`Última atualização: ${new Date().toLocaleTimeString()}`);
   };
 
   useEffect(() => {
@@ -238,7 +259,6 @@ export default function App() {
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    setLastUpdate(`A processar ${file.name}...`);
     try {
       const reader = new FileReader();
       reader.onload = (evt) => {
@@ -269,7 +289,6 @@ export default function App() {
         setRegistros(todosRegistros);
         setPrevisaoRegistros(previsaoCaixaRegistros);
         setFonte(`Arquivo local (${file.name})`);
-        setLastUpdate(`Última atualização: ${new Date().toLocaleTimeString()}`);
       };
       reader.readAsArrayBuffer(file);
     } catch(err) {
@@ -279,30 +298,57 @@ export default function App() {
 
   const handlePresetChange = (preset) => {
     setFilterPreset(preset);
+
+    if (preset === 'custom') {
+        // Keeps the existing filter dates but does not auto-apply
+        return;
+    }
+
     const hoje = new Date();
     
     const dStr = (d) => d.toISOString().substring(0, 10);
     
+    let novoDe = '';
+    let novoAte = '';
+
     if (preset === 'this-month') {
-        const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-        setFilterDe(dStr(primeiroDia));
-        setFilterAte(dStr(ultimoDia));
+        const logico = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        novoDe = dStr(logico);
+        novoAte = dStr(new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0));
+    } else if (preset === 'this-quarter') {
+        const quarter = Math.floor(hoje.getMonth() / 3);
+        const logico = new Date(hoje.getFullYear(), quarter * 3, 1);
+        novoDe = dStr(logico);
+        novoAte = dStr(new Date(hoje.getFullYear(), quarter * 3 + 3, 0));
+    } else if (preset === 'this-semester') {
+        const semester = Math.floor(hoje.getMonth() / 6);
+        const logico = new Date(hoje.getFullYear(), semester * 6, 1);
+        novoDe = dStr(logico);
+        novoAte = dStr(new Date(hoje.getFullYear(), semester * 6 + 6, 0));
+    } else if (preset === 'this-year') {
+        novoDe = dStr(new Date(hoje.getFullYear(), 0, 1));
+        novoAte = dStr(new Date(hoje.getFullYear(), 12, 0));
+    } else if (preset === 'all') {
+        novoDe = '';
+        novoAte = '';
     } else if (preset === 'this-week') {
         const diaSemana = hoje.getDay();
         const domingo = new Date(hoje);
         domingo.setDate(hoje.getDate() - diaSemana);
         const sabado = new Date(domingo);
         sabado.setDate(domingo.getDate() + 6);
-        setFilterDe(dStr(domingo));
-        setFilterAte(dStr(sabado));
+        novoDe = dStr(domingo);
+        novoAte = dStr(sabado);
     } else if (preset === 'today') {
-        setFilterDe(dStr(hoje));
-        setFilterAte(dStr(hoje));
-    } else if (preset === 'all') {
-        setFilterDe('');
-        setFilterAte('');
+        novoDe = dStr(hoje);
+        novoAte = dStr(hoje);
     }
+
+    setFilterDe(novoDe);
+    setFilterAte(novoAte);
+    // Auto-aplicar
+    setAppliedDe(novoDe);
+    setAppliedAte(novoAte);
   };
 
   const aplicarFiltros = () => {
@@ -349,49 +395,125 @@ export default function App() {
   const filteredRegistros = useMemo(() => {
     const existeDataValida = registros.some(reg => Boolean(reg.mesChave));
     if (!existeDataValida) return registros;
+
     return registros.filter(reg => {
-        if (!reg.mesChave) return !appliedDe && !appliedAte;
-        if (appliedDe && reg.mesChave < appliedDe) return false;
-        if (appliedAte && reg.mesChave > appliedAte) return false;
-        return true;
+        // Avulsos ou Mock Data sem transacoes
+        if (!reg.transacoes || reg.transacoes.length === 0) {
+            if (!reg.mesChave) return !appliedDe && !appliedAte;
+            if (appliedDe && reg.mesChave < appliedDe) return false;
+            if (appliedAte && reg.mesChave > appliedAte) return false;
+            return true;
+        }
+
+        // Projetos: se foi criado no período ou teve transação no período, entra.
+        let createdAt = reg.criadoEm || reg.mesChave;
+        let wasCreatedInPeriod = true;
+        if (appliedDe && createdAt < appliedDe) wasCreatedInPeriod = false;
+        if (appliedAte && createdAt > appliedAte) wasCreatedInPeriod = false;
+
+        let hasTransactionInPeriod = false;
+        reg.transacoes.forEach(t => {
+            const d = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
+            let inside = true;
+            if (appliedDe && d < appliedDe) inside = false;
+            if (appliedAte && d > appliedAte) inside = false;
+            if (inside) hasTransactionInPeriod = true;
+        });
+
+        return wasCreatedInPeriod || hasTransactionInPeriod;
+    }).map(reg => {
+        if (!reg.transacoes || reg.transacoes.length === 0) return reg;
+
+        let validEntrada = 0;
+        let validSaida = 0;
+        reg.transacoes.forEach(t => {
+            const d = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
+            let inside = true;
+            if (appliedDe && d < appliedDe) inside = false;
+            if (appliedAte && d > appliedAte) inside = false;
+            if (inside) {
+                if (t.tipo === 'ENTRADA') validEntrada += Number(t.valor);
+                if (t.tipo === 'SAIDA') validSaida += Number(t.valor);
+            }
+        });
+
+        let createdAt = reg.criadoEm || reg.mesChave;
+        let wasCreated = true;
+        if (appliedDe && createdAt < appliedDe) wasCreated = false;
+        if (appliedAte && createdAt > appliedAte) wasCreated = false;
+
+        return {
+            ...reg,
+            entrada: validEntrada,
+            saida: validSaida,
+            valorFechado: wasCreated ? reg.valorFechado : 0,
+            valorRestante: wasCreated ? (reg.valorFechado - validEntrada) : 0
+        };
     });
   }, [registros, appliedDe, appliedAte]);
 
   const dashboardData = useMemo(() => {
-    const kpis = { faturamentoTotal: 0, aReceber: 0, totalEntradas: 0, totalSaidas: 0 };
+    const kpis = { faturamentoTotal: 0, aReceber: 0, totalEntradas: 0, totalSaidas: 0, lucroLiquido: 0 };
     const fluxoPorMes = {};
     const parceirosMap = {};
 
     filteredRegistros.forEach(reg => {
         kpis.faturamentoTotal += reg.valorFechado;
-        kpis.aReceber += reg.valorRestante;
         kpis.totalEntradas += reg.entrada;
         kpis.totalSaidas += reg.saida;
 
-        if (reg.mesChave) {
-            if (!fluxoPorMes[reg.mesChave]) fluxoPorMes[reg.mesChave] = { entradas: 0, saidas: 0 };
-            fluxoPorMes[reg.mesChave].entradas += reg.entrada;
-            fluxoPorMes[reg.mesChave].saidas += reg.saida;
+        if (!reg.transacoes || reg.transacoes.length === 0) {
+            let chaveFallback = reg.mesChave;
+            if (filterAgrupamento === 'semanal' && chaveFallback) {
+                chaveFallback = getISOWeekKey(chaveFallback);
+            }
+            if (chaveFallback) {
+                if (!fluxoPorMes[chaveFallback]) fluxoPorMes[chaveFallback] = { entradas: 0, saidas: 0 };
+                fluxoPorMes[chaveFallback].entradas += reg.entrada;
+                fluxoPorMes[chaveFallback].saidas += reg.saida;
+            }
+        } else {
+            reg.transacoes.forEach(t => {
+                const dateStr = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
+                let inside = true;
+                if (appliedDe && dateStr < appliedDe) inside = false;
+                if (appliedAte && dateStr > appliedAte) inside = false;
+                if (inside) {
+                    let dKey = dateStr;
+                    if (filterAgrupamento === 'semanal') {
+                        dKey = getISOWeekKey(dateStr);
+                    } else if (filterAgrupamento === 'mensal') {
+                        dKey = dateStr.substring(0, 7); // YYYY-MM
+                    }
+                    
+                    if (!fluxoPorMes[dKey]) fluxoPorMes[dKey] = { entradas: 0, saidas: 0 };
+                    if (t.tipo === 'ENTRADA') fluxoPorMes[dKey].entradas += Number(t.valor);
+                    if (t.tipo === 'SAIDA') fluxoPorMes[dKey].saidas += Number(t.valor);
+                }
+            });
         }
 
         const mVal = Number(reg[filterMetric] || 0);
         if (mVal > 0) parceirosMap[reg.parceiro] = (parceirosMap[reg.parceiro] || 0) + mVal;
     });
 
+    kpis.aReceber = kpis.faturamentoTotal - kpis.totalEntradas;
+    kpis.lucroLiquido = kpis.totalEntradas - kpis.totalSaidas;
+
     const chavesMeses = Object.keys(fluxoPorMes).sort();
     const fluxo = {
-        meses: chavesMeses.map(formatarMesChave),
+        meses: chavesMeses.map(k => formatarMesChave(k, filterAgrupamento)),
         entradas: chavesMeses.map(c => Number(fluxoPorMes[c].entradas.toFixed(2))),
         saidas: chavesMeses.map(c => Number(fluxoPorMes[c].saidas.toFixed(2)))
     };
 
-    const parceiros = Object.entries(parceirosMap).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const parceiros = Object.entries(parceirosMap).sort((a, b) => b[1] - a[1]);
 
     return { kpis, fluxo, parceiros, qtdMeses: chavesMeses.length };
-  }, [filteredRegistros, filterMetric]);
+  }, [filteredRegistros, filterMetric, filterAgrupamento]);
 
   const topProjetos = useMemo(() => {
-    return [...filteredRegistros].sort((a, b) => b.valorFechado - a.valorFechado);
+    return [...filteredRegistros].filter(reg => reg.parceiro !== 'Lançamentos Avulsos (Sem Projeto)').sort((a, b) => b.valorFechado - a.valorFechado);
   }, [filteredRegistros]);
 
   const filteredProjetos = useMemo(() => {
@@ -412,8 +534,8 @@ export default function App() {
   const chartPrevisaoData = {
     labels: dashboardData.fluxo.meses,
     datasets: [
-        { label: 'Entradas', data: dashboardData.fluxo.entradas, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.2)', fill: true, tension: 0.3 },
-        { label: 'Saídas', data: dashboardData.fluxo.saidas, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.2)', fill: true, tension: 0.3 }
+        { label: 'Entradas', data: dashboardData.fluxo.entradas, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.4)', fill: true, tension: 0.3 },
+        { label: 'Saídas', data: dashboardData.fluxo.saidas, borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.4)', fill: true, tension: 0.3 }
     ]
   };
 
@@ -599,7 +721,7 @@ export default function App() {
         <div className="header-content">
             <div>
                 <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: 700 }}>Dashboard Organizacional</h1>
-                <p id="last-update" style={{ color: '#cbd5e1', fontSize: '15px', opacity: 0.9 }}>{lastUpdate}</p>
+
             </div>
             <div className="header-actions">
                 <button className="theme-toggle" onClick={toggleTheme} title="Alternar Modo Escuro">
@@ -615,7 +737,7 @@ export default function App() {
       <div className="container">
         
         {/* KPI Cards */}
-        <div className="grid-row grid-4">
+        <div className="grid-row grid-5">
             <div className="card kpi-card">
                 <div className="kpi-icon primary"><i className="fa-solid fa-wallet"></i></div>
                 <div className="kpi-info">
@@ -644,77 +766,107 @@ export default function App() {
                     <span className="kpi-value">{formatarMoeda(dashboardData.kpis.aReceber)}</span>
                 </div>
             </div>
+            <div className="card kpi-card">
+                <div className="kpi-icon success"><i className="fa-solid fa-sack-dollar"></i></div>
+                <div className="kpi-info">
+                    <span className="kpi-label">Lucro Líquido</span>
+                    <span className="kpi-value">{formatarMoeda(dashboardData.kpis.lucroLiquido)}</span>
+                </div>
+            </div>
         </div>
 
-        {/* Filtros */}
-        <div className="card">
-            <div className="card-header">
-                <span className="card-title"><i className="fa-solid fa-sliders"></i> Filtros de Análise</span>
+        {/* Barra de Filtros Rápida em cima dos gráficos */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <select 
+                    value={filterPreset} 
+                    onChange={e => handlePresetChange(e.target.value)}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)', fontWeight: '600' }}
+                >
+                    <option value="this-month">Este Mês</option>
+                    <option value="this-quarter">Este Trimestre</option>
+                    <option value="this-semester">Este Semestre</option>
+                    <option value="this-year">Este Ano</option>
+                    <option value="all">Todo Histórico</option>
+                    <option value="custom">Personalizado</option>
+                </select>
+
+                {filterPreset === 'custom' && (
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <input 
+                            type="date" 
+                            value={filterDe} 
+                            onChange={e => setFilterDe(e.target.value)} 
+                            style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '13px' }} 
+                        />
+                        <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>até</span>
+                        <input 
+                            type="date" 
+                            value={filterAte} 
+                            onChange={e => setFilterAte(e.target.value)} 
+                            style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '13px' }} 
+                        />
+                        <button className="btn btn-primary" onClick={aplicarFiltros} style={{ padding: '6px 12px', fontSize: '13px', marginLeft: '4px' }}>OK</button>
+                    </div>
+                )}
+
+                <select 
+                    value={filterAgrupamento} 
+                    onChange={e => setFilterAgrupamento(e.target.value)}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)' }}
+                >
+                    <option value="mensal">Agrupar por Mês</option>
+                    <option value="semanal">Agrupar por Semana</option>
+                </select>
+
+                <select 
+                    value={filterFlowType} 
+                    onChange={e => setFilterFlowType(e.target.value)}
+                    style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text-main)' }}
+                >
+                    <option value="line">Gráfico de Linha</option>
+                    <option value="bar">Gráfico de Coluna</option>
+                </select>
             </div>
-            <div className="controls-card">
-                <div className="control-group">
-                    <label>De (Dia)</label>
-                    <input type="date" value={filterDe} onChange={e => { setFilterDe(e.target.value); setFilterPreset('custom'); }} />
-                </div>
-                <div className="control-group">
-                    <label>Até (Dia)</label>
-                    <input type="date" value={filterAte} onChange={e => { setFilterAte(e.target.value); setFilterPreset('custom'); }} />
-                </div>
-                <div className="control-group">
-                    <label>Atalho de período</label>
-                    <select value={filterPreset} onChange={e => handlePresetChange(e.target.value)}>
-                        <option value="this-month">Este Mês</option>
-                        <option value="this-week">Esta Semana</option>
-                        <option value="today">Hoje</option>
-                        <option value="all">Todo Histórico</option>
-                        <option value="custom">Personalizado</option>
-                    </select>
-                </div>
-                <div className="control-group">
-                    <label>Métrica de parceiros</label>
-                    <select value={filterMetric} onChange={e => setFilterMetric(e.target.value)}>
-                        <option value="valorFechado">Valor Fechado</option>
-                        <option value="valorRestante">Valor Restante</option>
-                        <option value="entrada">Entradas</option>
-                        <option value="saida">Saídas</option>
-                    </select>
-                </div>
-                <div className="control-group">
-                    <label>Gráfico de fluxo</label>
-                    <select value={filterFlowType} onChange={e => setFilterFlowType(e.target.value)}>
-                        <option value="line">Linha</option>
-                        <option value="bar">Coluna</option>
-                    </select>
-                </div>
-                <div className="actions-row">
-                    <button className="btn btn-primary" onClick={aplicarFiltros} title="Aplicar Filtros">Aplicar Filtros</button>
-                    <button className="btn btn-secondary" onClick={clearFilters} title="Limpar Filtros"><i className="fa-solid fa-eraser"></i></button>
-                    <button className="btn btn-secondary" onClick={downloadCSV} title="Baixar CSV" style={{ margin: 0 }}>
-                        <i className="fa-solid fa-file-csv"></i>
-                    </button>
-                </div>
-            </div>
-            <div className="filter-status">
-                <strong>Período: {appliedDe ? formatarMesChave(appliedDe) : 'Início'} a {appliedAte ? formatarMesChave(appliedAte) : 'Fim'}</strong>
-                <span>{filteredRegistros.length} lançamento(s) em {dashboardData.qtdMeses} dia(s)/mês(es) via {fonte}</span>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                    {filteredRegistros.length} lançamentos via {fonte}
+                </span>
+                <button className="btn btn-secondary" onClick={downloadCSV} title="Baixar CSV" style={{ margin: 0, padding: '8px 14px' }}>
+                    <i className="fa-solid fa-file-csv"></i> CSV
+                </button>
             </div>
         </div>
 
         <div className="grid-row">
             <div className="card">
-                <div className="card-header">
+                <div className="card-header" style={{ marginBottom: 0 }}>
                     <span className="card-title"><i className="fa-solid fa-chart-bar"></i> Faturamento por Parceiro</span>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', border: '1px solid var(--border)', borderRadius: '6px', padding: '6px 12px', background: 'var(--bg-color)' }}>
+                        <i className="fa-solid fa-search" style={{ color: 'var(--text-muted)', fontSize: '13px' }}></i>
+                        <input 
+                            type="text" 
+                            placeholder="Buscar parceiro..." 
+                            value={searchParceiroGrafico}
+                            onChange={e => setSearchParceiroGrafico(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', color: 'var(--text-main)', width: '130px' }}
+                        />
+                    </div>
                 </div>
-                <div className="bar-chart">
-                    {dashboardData.parceiros.length > 0 ? dashboardData.parceiros.map(([nome, val], i) => {
+                <div className="bar-chart" style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '10px', marginTop: '16px' }}>
+                    {dashboardData.parceiros.length > 0 ? dashboardData.parceiros
+                        .filter(([nome]) => nome.toLowerCase().includes(searchParceiroGrafico.toLowerCase()))
+                        .map(([nome, val], i) => {
                         const maxVal = Math.max(...dashboardData.parceiros.map(p => p[1]), 1);
                         const cores = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
                         return (
                             <div className="bar-row" key={nome}>
                                 <div className="bar-label">{nome}</div>
                                 <div className="bar-track">
-                                    <div className="bar-fill" style={{ width: `${(val / maxVal) * 100}%`, background: cores[i] }}>
-                                        {formatarMoeda(val)}
+                                    <div className="bar-fill" style={{ width: `${(val / maxVal) * 100}%`, background: cores[i % cores.length], minWidth: val < 3000 ? '4px' : 'auto', position: 'relative' }}>
+                                        <span className={val < 3000 ? "val-outside d-desktop-only" : "val-inside"}>
+                                            {formatarMoeda(val)}
+                                        </span>
                                     </div>
                                 </div>
                             </div>
@@ -760,50 +912,6 @@ export default function App() {
                 </div>
             )}
         </div>
-
-        {previsaoRegistros.length > 0 && (
-          <div className="grid-row grid-2">
-            <div className="card">
-                <div className="card-header">
-                    <span className="card-title"><i className="fa-solid fa-chart-pie"></i> Previsão de Entradas por Categoria</span>
-                </div>
-                <div className="doughnut-wrapper">
-                    <div className="doughnut-container">
-                        <Doughnut data={chartEntradasCatData} options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }} />
-                    </div>
-                    <ul className="doughnut-legend">
-                        {previsaoPorCategoria.entradas.length === 0 && <li>Sem lançamentos</li>}
-                        {previsaoPorCategoria.entradas.map((cat, i) => (
-                            <li key={cat[0]}>
-                                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: corDoughnut[i % corDoughnut.length], marginRight: '8px' }}></span>
-                                {cat[0]}: {formatarMoeda(cat[1])}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-
-            <div className="card">
-                <div className="card-header">
-                    <span className="card-title"><i className="fa-solid fa-chart-pie"></i> Previsão de Saídas por Categoria</span>
-                </div>
-                <div className="doughnut-wrapper">
-                    <div className="doughnut-container">
-                        <Doughnut data={chartSaidasCatData} options={{ plugins: { legend: { display: false } }, maintainAspectRatio: false }} />
-                    </div>
-                    <ul className="doughnut-legend">
-                        {previsaoPorCategoria.saidas.length === 0 && <li>Sem lançamentos</li>}
-                        {previsaoPorCategoria.saidas.map((cat, i) => (
-                            <li key={cat[0]}>
-                                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', backgroundColor: corDoughnutSaida[i % corDoughnutSaida.length], marginRight: '8px' }}></span>
-                                {cat[0]}: {formatarMoeda(cat[1])}
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-            </div>
-          </div>
-        )}
 
         <div className="grid-row">
             <div className="card">
