@@ -7,9 +7,10 @@ import './index.css';
 
 function Navigation() {
   const location = useLocation();
+  const isDashboard = location.pathname === '/';
   
   return (
-    <nav style={{ display: 'flex', gap: '15px', padding: '15px 20px', background: 'var(--header-bg)', justifyContent: 'center', alignItems: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+    <nav style={{ position: 'absolute', width: '100%', zIndex: 10, display: 'flex', gap: '15px', padding: '15px 20px', background: 'rgba(0, 0, 0, 0.5)', backdropFilter: 'blur(4px)', justifyContent: 'center', alignItems: 'center' }}>
       <div style={{ display: 'flex', flex: 1 }}></div>
       <div style={{ display: 'flex', gap: '15px' }}>
         <Link 

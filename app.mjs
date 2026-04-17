@@ -131,6 +131,19 @@ router.post('/projetos', async (req, res) => {
   }
 });
 
+router.put('/projetos/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const projeto = await prisma.projeto.update({
+      where: { id: Number(req.params.id) },
+      data: { status }
+    });
+    res.json(projeto);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/transacoes', async (req, res) => {
   try {
     const { projetoId, tipo, valor, dataPagamento, categoria, descricao } = req.body;

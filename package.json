@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "concurrently \"vite\" \"node server.mjs\"",
+    "dev": "concurrently \"vite --host\" \"node server.mjs\"",
     "build": "npx prisma generate && vite build",
     "preview": "vite preview"
   },

@@ -252,6 +252,22 @@ export default function App() {
     }
   };
 
+  const updateProjetoStatus = async (id, newStatus) => {
+    try {
+      if (id.toString().startsWith('avulsos-')) return;
+      const resp = await fetch(`/api/projetos/${id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!resp.ok) throw new Error('Falha ao atualizar status');
+      fetchData();
+    } catch (e) {
+      console.error("Erro ao atualizar status:", e);
+      alert('Falha ao atualizar status do projeto');
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -466,6 +482,8 @@ export default function App() {
             let chaveFallback = reg.mesChave;
             if (filterAgrupamento === 'semanal' && chaveFallback) {
                 chaveFallback = getISOWeekKey(chaveFallback);
+            } else if (filterAgrupamento === 'mensal' && chaveFallback) {
+                chaveFallback = chaveFallback.substring(0, 7); // YYYY-MM
             }
             if (chaveFallback) {
                 if (!fluxoPorMes[chaveFallback]) fluxoPorMes[chaveFallback] = { entradas: 0, saidas: 0 };
@@ -504,7 +522,8 @@ export default function App() {
     const fluxo = {
         meses: chavesMeses.map(k => formatarMesChave(k, filterAgrupamento)),
         entradas: chavesMeses.map(c => Number(fluxoPorMes[c].entradas.toFixed(2))),
-        saidas: chavesMeses.map(c => Number(fluxoPorMes[c].saidas.toFixed(2)))
+        saidas: chavesMeses.map(c => Number(fluxoPorMes[c].saidas.toFixed(2))),
+        saldos: chavesMeses.map(c => Number((fluxoPorMes[c].entradas - fluxoPorMes[c].saidas).toFixed(2)))
     };
 
     const parceiros = Object.entries(parceirosMap).sort((a, b) => b[1] - a[1]);
@@ -520,7 +539,8 @@ export default function App() {
     return topProjetos.filter(reg => {
       const matchSearch = reg.parceiro.toLowerCase().includes(searchProjeto.toLowerCase()) || 
                           (reg.servico || '').toLowerCase().includes(searchProjeto.toLowerCase());
-      const statusValue = reg.valorRestante > 0 ? 'em-andamento' : 'concluido';
+      const statusRaw = (reg.status || "").toLowerCase().trim();
+      const statusValue = (statusRaw === 'concluído' || statusRaw === 'concluido') ? 'concluido' : 'em-andamento';
       const matchStatus = filterStatusProjeto === 'all' || statusValue === filterStatusProjeto;
       
       return matchSearch && matchStatus;
@@ -534,8 +554,9 @@ export default function App() {
   const chartPrevisaoData = {
     labels: dashboardData.fluxo.meses,
     datasets: [
-        { label: 'Entradas', data: dashboardData.fluxo.entradas, borderColor: '#059669', backgroundColor: 'rgba(5, 150, 105, 0.4)', fill: true, tension: 0.3 },
-        { label: 'Saídas', data: dashboardData.fluxo.saidas, borderColor: '#dc2626', backgroundColor: 'rgba(220, 38, 38, 0.4)', fill: true, tension: 0.3 }
+        { label: 'Entradas Reais', data: dashboardData.fluxo.entradas, backgroundColor: 'rgba(16, 185, 129, 0.4)', borderColor: '#10b981', borderWidth: 2, type: filterFlowType === 'line' ? 'line' : 'bar', fill: filterFlowType === 'line', tension: 0.3 },
+        { label: 'Saídas Reais', data: dashboardData.fluxo.saidas, backgroundColor: 'rgba(239, 68, 68, 0.4)', borderColor: '#ef4444', borderWidth: 2, type: filterFlowType === 'line' ? 'line' : 'bar', fill: filterFlowType === 'line', tension: 0.3 },
+        { label: 'Saldo do Período', data: dashboardData.fluxo.saldos, borderColor: '#065f46', backgroundColor: 'rgba(6, 95, 70, 0.15)', borderWidth: 3, type: 'line', fill: true, tension: 0.3 }
     ]
   };
 
@@ -676,8 +697,8 @@ export default function App() {
     };
   }, [previsaoRegistros, appliedDe, appliedAte]);
 
-  const corDoughnut = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
-  const corDoughnutSaida = ['#ef4444', '#f97316', '#f43f5e', '#a855f7', '#6366f1', '#ec4899', '#d946ef'];
+  const corDoughnut = ['#10b981', '#34d399', '#059669', '#a7f3d0', '#047857', '#6ee7b7', '#064e3b'];
+  const corDoughnutSaida = ['#ef4444', '#f87171', '#dc2626', '#fca5a5', '#b91c1c', '#fda4af', '#991b1b'];
 
   const chartEntradasCatData = {
     labels: previsaoPorCategoria.entradas.map(e => e[0]),
@@ -700,9 +721,9 @@ export default function App() {
   const chartPrevisaoCaixaData = dadosPrevisaoCaixa ? {
     labels: dadosPrevisaoCaixa.meses,
     datasets: [
-        { label: 'Entradas Previstas', data: dadosPrevisaoCaixa.entradas, backgroundColor: '#3b82f6', type: 'bar' },
-        { label: 'Saídas Previstas', data: dadosPrevisaoCaixa.saidas, backgroundColor: '#f59e0b', type: 'bar' },
-        { label: 'Saldo Previsto', data: dadosPrevisaoCaixa.saldos, borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.2)', type: 'line', fill: true, tension: 0.3 }
+        { label: 'Entradas Previstas', data: dadosPrevisaoCaixa.entradas, backgroundColor: 'rgba(16, 185, 129, 0.5)', borderColor: '#059669', borderWidth: 2, type: 'bar' },
+        { label: 'Saídas Previstas', data: dadosPrevisaoCaixa.saidas, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#dc2626', borderWidth: 2, type: 'bar' },
+        { label: 'Saldo Previsto', data: dadosPrevisaoCaixa.saldos, borderColor: '#064e3b', backgroundColor: 'rgba(6, 78, 59, 0.15)', borderWidth: 3, type: 'line', fill: true, tension: 0.3 }
     ]
   } : null;
 
@@ -717,17 +738,24 @@ export default function App() {
 
   return (
     <>
-      <header>
-        <div className="header-content">
+      <header style={{
+          backgroundImage: 'url(/CAPA_DASHBOARD.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'right center',
+          color: '#1f2937',
+          padding: '85px 20px 80px 20px',
+          boxShadow: 'none',
+          position: 'relative'
+      }}>
+        <div className="header-content" style={{ position: 'relative', zIndex: 1 }}>
             <div>
-                <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: 700 }}>Dashboard Organizacional</h1>
-
+                <h1 style={{ fontSize: '32px', marginBottom: '8px', fontWeight: 800, color: '#064e3b', textShadow: '1px 1px 2px rgba(255,255,255,0.7)' }}>Dashboard Organizacional</h1>
             </div>
             <div className="header-actions">
-                <button className="theme-toggle" onClick={toggleTheme} title="Alternar Modo Escuro">
+                <button className="theme-toggle" onClick={toggleTheme} title="Alternar Modo Escuro" style={{ background: 'rgba(255,255,255,0.7)', color: '#064e3b' }}>
                     <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
                 </button>
-                <button onClick={fetchData} className="btn btn-primary" style={{ background: 'rgba(255,255,255,0.2)', boxShadow: 'none', border: '1px solid rgba(255,255,255,0.3)' }}>
+                <button onClick={fetchData} className="btn btn-primary" style={{ background: '#059669', color: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: 'none' }}>
                     <i className="fa-solid fa-rotate-right"></i> Atualizar
                 </button>
             </div>
@@ -882,11 +910,7 @@ export default function App() {
                     <span className="card-title"><i className="fa-solid fa-chart-line"></i> Evolução de Entradas e Saídas</span>
                 </div>
                 <div className="chart-container">
-                    {filterFlowType === 'line' ? (
-                        <Line data={chartPrevisaoData} options={chartPrevisaoOptions} />
-                    ) : (
-                        <Bar data={chartPrevisaoData} options={chartPrevisaoOptions} />
-                    )}
+                    <Chart type="bar" data={chartPrevisaoData} options={chartPrevisaoOptions} />
                 </div>
             </div>
             
@@ -951,7 +975,33 @@ export default function App() {
                                 <tr key={idx}>
                                     <td><span className="client-name">{reg.parceiro}</span></td>
                                     <td>{reg.servico || 'N/A'}</td>
-                                    <td><span className={`status-badge ${reg.valorRestante > 0 ? 'status-elaboracao' : 'status-concluido'}`}>{reg.valorRestante > 0 ? 'Em Andamento' : 'Concluído'}</span></td>
+                                    <td>
+                                        {reg.id.toString().startsWith('avulsos-') ? (
+                                            <span className="status-badge status-concluido">{reg.status}</span>
+                                        ) : (
+                                            <select
+                                                value={(() => {
+                                                    const s = (reg.status || 'EM ANDAMENTO').trim().toUpperCase();
+                                                    if (s === 'CONCLUIDO') return 'CONCLUÍDO';
+                                                    return s;
+                                                })()}
+                                                onChange={(e) => updateProjetoStatus(reg.id, e.target.value)}
+                                                className={`status-badge ${(() => {
+                                                    const s = (reg.status || "").toLowerCase().trim();
+                                                    if (s === 'concluído' || s === 'concluido') return 'status-concluido';
+                                                    if (s === 'em elaboração' || s === 'em elaboracao') return 'status-em-elaboracao';
+                                                    if (s === 'em analise orgao' || s === 'em análise órgão') return 'status-em-analise';
+                                                    return 'status-em-andamento';
+                                                })()}`}
+                                                style={{ cursor: 'pointer', appearance: 'auto', border: 'none', fontWeight: 'bold', paddingRight: '20px', textAlign: 'center' }}
+                                            >
+                                                <option value="EM ANDAMENTO" style={{color: '#fff', background: 'var(--primary)'}}>EM ANDAMENTO</option>
+                                                <option value="EM ELABORAÇÃO" style={{color: '#fff', background: 'var(--warning)'}}>EM ELABORAÇÃO</option>
+                                                <option value="EM ANALISE ORGAO" style={{color: '#fff', background: '#8b5cf6'}}>EM ANÁLISE ÓRGÃO</option>
+                                                <option value="CONCLUÍDO" style={{color: '#fff', background: 'var(--success)'}}>CONCLUÍDO</option>
+                                            </select>
+                                        )}
+                                    </td>
                                     <td className="money-cell">{formatarMoeda(reg.valorFechado)}</td>
                                 </tr>
                             ))}

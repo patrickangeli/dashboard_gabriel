@@ -96,11 +96,19 @@ export default function InsertData() {
 
   return (
     <>
-      <header>
-        <div className="header-content" style={{ justifyContent: 'center', textAlign: 'center' }}>
+      <header style={{
+          backgroundImage: 'url(/CAPA_DASHBOARD.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'right center',
+          color: '#1f2937',
+          padding: '85px 20px 80px 20px',
+          boxShadow: 'none',
+          position: 'relative'
+      }}>
+        <div className="header-content" style={{ position: 'relative', zIndex: 1, justifyContent: 'center', textAlign: 'center' }}>
             <div>
-                <h1 style={{ fontSize: '28px', marginBottom: '8px', fontWeight: 700 }}>Inclusão de Movimentações</h1>
-                <p style={{ color: '#cbd5e1', fontSize: '15px', opacity: 0.9 }}>Cadastre novos projetos, pagamentos ou receitas e gere previsões futuras.</p>
+                <h1 style={{ fontSize: '32px', marginBottom: '8px', fontWeight: 800, color: '#064e3b', textShadow: '1px 1px 2px rgba(255,255,255,0.7)' }}>Inclusão de Movimentações</h1>
+                <p style={{ color: '#064e3b', fontSize: '15px', fontWeight: 600, textShadow: '1px 1px 2px rgba(255,255,255,0.7)' }}>Cadastre novos projetos, pagamentos ou receitas e gere previsões futuras.</p>
             </div>
         </div>
       </header>

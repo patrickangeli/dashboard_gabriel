@@ -14,7 +14,10 @@ body.dark-mode {
     --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.3s, color 0.3s, border-color 0.3s; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body, .card, header, nav, input, select, button, table th, table td { 
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s; 
+}
 body { background-color: var(--bg-color); font-family: 'Inter', sans-serif; color: var(--text-main); }
 
 header { background: var(--header-bg); color: white; padding: 30px 20px 80px 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
@@ -117,9 +120,11 @@ th { text-align: left; padding: 16px; border-bottom: 2px solid var(--border); co
 td { padding: 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 
-.status-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-.status-elaboracao { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
-.status-concluido { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+.status-badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+.status-em-andamento { background: var(--primary) !important; color: #fff !important; }
+.status-em-elaboracao { background: var(--warning) !important; color: #fff !important; }
+.status-em-analise { background: #8b5cf6 !important; color: #fff !important; }
+.status-concluido { background: var(--success) !important; color: #fff !important; }
 
 .client-name { font-weight: 700; color: var(--text-heading); display: block; font-size: 15px;}
 .money-cell { font-weight: 700; color: var(--text-heading); }
