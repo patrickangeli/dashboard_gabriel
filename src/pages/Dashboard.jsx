@@ -258,7 +258,7 @@ export default function App() {
 
   const updateProjetoStatus = async (id, newStatus) => {
     try {
-      if (id.toString().startsWith('avulsos-')) return;
+      if (String(id).startsWith('avulsos-')) return;
       const resp = await fetch(`/api/projetos/${id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -980,7 +980,7 @@ export default function App() {
                                     <td><span className="client-name">{reg.parceiro}</span></td>
                                     <td>{reg.servico || 'N/A'}</td>
                                     <td>
-                                        {reg.id.toString().startsWith('avulsos-') ? (
+                                        {String(reg.id).startsWith('avulsos-') ? (
                                             <span className="status-badge status-concluido">{reg.status}</span>
                                         ) : (
                                             <select
