@@ -239,8 +239,11 @@ export default function App() {
   const fetchData = async () => {
     try {
       const resp = await fetch('/api/dashboard');
-      if (!resp.ok) throw new Error('Falha na requisição CORS/HTTP para Dashboard');
-      const dadosDashboard = await resp.json();
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`CORS/HTTP 500. Server Response: ${errText.substring(0, 500)}`);
+      }
+      const dadosDashboard = JSON.parse(await resp.text());
       
       const prev = await fetch('/api/previsao');
       const dadosPrevisao = prev.ok ? await prev.json() : [];

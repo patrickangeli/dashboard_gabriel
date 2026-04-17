@@ -94,7 +94,7 @@ router.get('/dashboard', async (req, res) => {
     res.json(registros);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack, name: err.name });
   }
 });
 
@@ -110,7 +110,7 @@ router.get('/previsao', async (req, res) => {
     }));
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack, name: err.name });
   }
 });
 
@@ -127,7 +127,7 @@ router.post('/projetos', async (req, res) => {
     });
     res.json(projeto);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack, name: err.name });
   }
 });
 
@@ -140,7 +140,7 @@ router.put('/projetos/:id/status', async (req, res) => {
     });
     res.json(projeto);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack, name: err.name });
   }
 });
 
@@ -159,7 +159,7 @@ router.post('/transacoes', async (req, res) => {
     });
     res.json(transacao);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack, name: err.name });
   }
 });
 
@@ -177,7 +177,7 @@ router.post('/previsao', async (req, res) => {
     });
     res.json(previsao);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack, name: err.name });
   }
 });
 
