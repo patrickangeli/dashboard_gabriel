@@ -77,9 +77,6 @@ const getMockData = () => [
 ];
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(
-    () => localStorage.getItem('theme') === 'dark'
-  );
   const [registros, setRegistros] = useState([]);
   const [previsaoRegistros, setPrevisaoRegistros] = useState([]);
   const [fonte, setFonte] = useState('Aguardando...');
@@ -96,13 +93,6 @@ export default function App() {
   const [searchProjeto, setSearchProjeto] = useState('');
   const [filterStatusProjeto, setFilterStatusProjeto] = useState('all');
   const [searchParceiroGrafico, setSearchParceiroGrafico] = useState('');
-
-  useEffect(() => {
-    document.body.classList.toggle('dark-mode', isDarkMode);
-    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
-  }, [isDarkMode]);
-
-  const toggleTheme = () => setIsDarkMode((prev) => !prev);
 
   // Parsing Helpers
   const parseDataParaMes = (valor) => {
@@ -555,8 +545,8 @@ export default function App() {
   }, [topProjetos, searchProjeto, filterStatusProjeto]);
 
   // Chart styling
-  const textColor = isDarkMode ? '#cbd5e1' : '#64748b';
-  const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+  const textColor = '#64748b';
+  const gridColor = '#e2e8f0';
 
   const chartPrevisaoData = {
     labels: dashboardData.fluxo.meses,
@@ -759,9 +749,6 @@ export default function App() {
                 <h1 style={{ fontSize: '32px', marginBottom: '8px', fontWeight: 800, color: '#064e3b', textShadow: '1px 1px 2px rgba(255,255,255,0.7)' }}>Dashboard Organizacional</h1>
             </div>
             <div className="header-actions">
-                <button className="theme-toggle" onClick={toggleTheme} title="Alternar Modo Escuro" style={{ background: 'rgba(255,255,255,0.7)', color: '#064e3b' }}>
-                    <i className={`fa-solid ${isDarkMode ? 'fa-sun' : 'fa-moon'}`}></i>
-                </button>
                 <button onClick={fetchData} className="btn btn-primary" style={{ background: '#059669', color: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: 'none' }}>
                     <i className="fa-solid fa-rotate-right"></i> Atualizar
                 </button>
