@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 export default function InsertData() {
   const [projetos, setProjetos] = useState([]);
@@ -11,6 +11,10 @@ export default function InsertData() {
       .then(data => setProjetos(data))
       .catch(e => console.error(e));
   }, []);
+
+  const projetosOrdenados = useMemo(() => {
+    return [...projetos].sort((a, b) => (a.parceiro || '').localeCompare(b.parceiro || ''));
+  }, [projetos]);
 
   const changeTab = (tipo) => {
     setTipoInsercao(tipo);
@@ -181,7 +185,7 @@ export default function InsertData() {
                     <label>Projeto Vinculado *</label>
                     <select name="projetoId" required defaultValue="">
                       <option value="" disabled>-- Selecione o Projeto --</option>
-                      {[...projetos].sort((a, b) => (a.parceiro || '').localeCompare(b.parceiro || '')).map(p => (
+                      {projetosOrdenados.map(p => (
                         <option key={p.id} value={p.id}>{p.parceiro} - {p.servico}</option>
                       ))}
                     </select>
