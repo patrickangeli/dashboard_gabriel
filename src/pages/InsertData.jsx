@@ -138,16 +138,16 @@ export default function InsertData() {
               </button>
             </div>
 
-            <div style={{ padding: '30px' }}>
+            <div style={{ padding: '20px' }}>
               
               {mensagem.texto && (
-                <div style={{ padding: '15px', borderRadius: '8px', marginBottom: '20px', background: mensagem.tipo === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: mensagem.tipo === 'success' ? '#10b981' : '#ef4444', border: mensagem.tipo === 'success' ? '1px solid #10b981' : '1px solid #ef4444', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '600' }}>
+                <div style={{ padding: '15px', borderRadius: '8px', marginBottom: '15px', background: mensagem.tipo === 'success' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: mensagem.tipo === 'success' ? '#10b981' : '#ef4444', border: mensagem.tipo === 'success' ? '1px solid #10b981' : '1px solid #ef4444', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '600' }}>
                   <i className={`fa-solid ${mensagem.tipo === 'success' ? 'fa-check-circle' : 'fa-triangle-exclamation'}`}></i> {mensagem.texto}
                 </div>
               )}
 
               {tipoInsercao === 'projeto' && (
-                <form onSubmit={handleProjetoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <form onSubmit={handleProjetoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div className="control-group">
                     <label>Cliente / Parceiro *</label>
                     <input name="cliente" required placeholder="Ex: João da Silva" />
@@ -180,7 +180,7 @@ export default function InsertData() {
               )}
 
               {tipoInsercao === 'transacao' && (
-                <form onSubmit={handleTransacaoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <form onSubmit={handleTransacaoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div className="control-group">
                     <label>Projeto Vinculado *</label>
                     <select name="projetoId" required defaultValue="">
@@ -215,7 +215,7 @@ export default function InsertData() {
                   </div>
                   <div className="control-group">
                     <label>Descrição Opcional</label>
-                    <input name="descricao" placeholder="Detalhe adicional" />
+                    <textarea name="descricao" rows="4" style={{ resize: 'vertical' }} placeholder="Detalhe adicional" />
                   </div>
                   <div style={{ marginTop: '10px' }}>
                     <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', background: 'var(--success)' }}>
@@ -226,7 +226,7 @@ export default function InsertData() {
               )}
 
               {tipoInsercao === 'previsao' && (
-                <form onSubmit={handlePrevisaoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <form onSubmit={handlePrevisaoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div className="grid-row grid-2">
                     <div className="control-group">
                       <label>Tipo de Lançamento Previsto *</label>
@@ -252,7 +252,7 @@ export default function InsertData() {
                   </div>
                   <div className="control-group">
                     <label>Descrição Curta</label>
-                    <input name="descricao" placeholder="Do que se trata esse lançamento?" />
+                    <textarea name="descricao" rows="4" style={{ resize: 'vertical' }} placeholder="Do que se trata esse lançamento?" />
                   </div>
                   <div style={{ marginTop: '10px' }}>
                     <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', background: '#8b5cf6' }}>

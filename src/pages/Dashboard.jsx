@@ -694,8 +694,8 @@ export default function App() {
     };
   }, [previsaoRegistros, appliedDe, appliedAte]);
 
-  const corDoughnut = ['#10b981', '#34d399', '#059669', '#a7f3d0', '#047857', '#6ee7b7', '#064e3b'];
-  const corDoughnutSaida = ['#ef4444', '#f87171', '#dc2626', '#fca5a5', '#b91c1c', '#fda4af', '#991b1b'];
+  const corDoughnut = ['#3b82f6', '#60a5fa', '#2563eb', '#93c5fd', '#1d4ed8', '#bfdbfe', '#1e40af'];
+  const corDoughnutSaida = ['#eab308', '#facc15', '#ca8a04', '#fef08a', '#a16207', '#fef9c3', '#713f12'];
 
   const chartEntradasCatData = {
     labels: previsaoPorCategoria.entradas.map(e => e[0]),
@@ -718,11 +718,65 @@ export default function App() {
   const chartPrevisaoCaixaData = dadosPrevisaoCaixa ? {
     labels: dadosPrevisaoCaixa.meses,
     datasets: [
-        { label: 'Entradas Previstas', data: dadosPrevisaoCaixa.entradas, backgroundColor: 'rgba(16, 185, 129, 0.5)', borderColor: '#059669', borderWidth: 2, type: 'bar' },
-        { label: 'Saídas Previstas', data: dadosPrevisaoCaixa.saidas, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: '#dc2626', borderWidth: 2, type: 'bar' },
+        { label: 'Entradas Previstas', data: dadosPrevisaoCaixa.entradas, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: '#2563eb', borderWidth: 2, type: 'bar' },
+        { label: 'Saídas Previstas', data: dadosPrevisaoCaixa.saidas, backgroundColor: 'rgba(234, 179, 8, 0.5)', borderColor: '#ca8a04', borderWidth: 2, type: 'bar' },
         { label: 'Saldo Previsto', data: dadosPrevisaoCaixa.saldos, borderColor: '#064e3b', backgroundColor: 'rgba(6, 78, 59, 0.15)', borderWidth: 3, type: 'line', fill: true, tension: 0.3 }
     ]
   } : null;
+
+  const listaTransacoes = useMemo(() => {
+    const transacoes = [];
+    filteredRegistros.forEach(reg => {
+        if (reg.transacoes && reg.transacoes.length > 0) {
+            reg.transacoes.forEach(t => {
+                const dataStr = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
+                let inside = true;
+                if (appliedDe && dataStr < appliedDe) inside = false;
+                if (appliedAte && dataStr > appliedAte) inside = false;
+                if (inside) {
+                    transacoes.push({
+                        id: t.id || Math.random().toString(36),
+                        data: dataStr,
+                        mesChave: formatarMesChave(dataStr.substring(0, 7), 'mensal'),
+                        parceiro: reg.parceiro,
+                        servico: reg.servico || 'N/A',
+                        tipo: t.tipo,
+                        valor: Number(t.valor)
+                    });
+                }
+            });
+        } else {
+            // Caso seja mock ou planilha sem transações detalhadas
+            const dataStr = reg.mesChave ? `${reg.mesChave}-01` : 'Sem Data';
+            const mesChaveFormatado = reg.mesChave ? formatarMesChave(reg.mesChave, 'mensal') : 'Sem Data';
+            if (reg.entrada > 0) {
+                transacoes.push({
+                    id: Math.random().toString(36),
+                    data: dataStr,
+                    mesChave: mesChaveFormatado,
+                    parceiro: reg.parceiro,
+                    servico: reg.servico || 'N/A',
+                    tipo: 'ENTRADA',
+                    valor: Number(reg.entrada)
+                });
+            }
+            if (reg.saida > 0) {
+                transacoes.push({
+                    id: Math.random().toString(36),
+                    data: dataStr,
+                    mesChave: mesChaveFormatado,
+                    parceiro: reg.parceiro,
+                    servico: reg.servico || 'N/A',
+                    tipo: 'SAIDA',
+                    valor: Number(reg.saida)
+                });
+            }
+        }
+    });
+
+    // Ordenar da mais recente para a mais antiga
+    return transacoes.sort((a, b) => b.data.localeCompare(a.data));
+  }, [filteredRegistros, appliedDe, appliedAte]);
 
   const chartPrevisaoOptions = {
     responsive: true, maintainAspectRatio: false,
@@ -746,7 +800,7 @@ export default function App() {
       }}>
         <div className="header-content" style={{ position: 'relative', zIndex: 1 }}>
             <div>
-                <h1 style={{ fontSize: '32px', marginBottom: '8px', fontWeight: 800, color: '#064e3b', textShadow: '1px 1px 2px rgba(255,255,255,0.7)' }}>Dashboard Organizacional</h1>
+                <h1 style={{ fontSize: '32px', marginBottom: '8px', fontWeight: 800, color: '#064e3b', textShadow: '1px 1px 2px rgba(255,255,255,0.7)' }}></h1>
             </div>
             <div className="header-actions">
                 <button onClick={fetchData} className="btn btn-primary" style={{ background: '#059669', color: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', border: 'none' }}>
@@ -960,8 +1014,8 @@ export default function App() {
                             <tr>
                                 <th>Cliente / Parceiro</th>
                                 <th>Serviço Executado</th>
-                                <th>Status Atual</th>
-                                <th>Valor Total</th>
+                                <th style={{ textAlign: 'center' }}>Status Atual</th>
+                                <th style={{ textAlign: 'right' }}>Valor Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -969,7 +1023,7 @@ export default function App() {
                                 <tr key={idx}>
                                     <td><span className="client-name">{reg.parceiro}</span></td>
                                     <td>{reg.servico || 'N/A'}</td>
-                                    <td>
+                                    <td style={{ textAlign: 'center' }}>
                                         {String(reg.id).startsWith('avulsos-') ? (
                                             <span className="status-badge status-concluido">{reg.status}</span>
                                         ) : (
@@ -996,9 +1050,61 @@ export default function App() {
                                             </select>
                                         )}
                                     </td>
-                                    <td className="money-cell">{formatarMoeda(reg.valorFechado)}</td>
+                                    <td className="money-cell" style={{ textAlign: 'right' }}>{formatarMoeda(reg.valorFechado)}</td>
                                 </tr>
                             ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div className="grid-row">
+            <div className="card">
+                <div className="card-header">
+                    <span className="card-title"><i className="fa-solid fa-money-bill-transfer"></i> Detalhamento de Entradas e Saídas</span>
+                </div>
+                <div className="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Mês</th>
+                                <th>Cliente / Parceiro</th>
+                                <th>Serviço</th>
+                                <th style={{ textAlign: 'center' }}>Tipo</th>
+                                <th style={{ textAlign: 'right' }}>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {listaTransacoes.length > 0 ? (
+                                listaTransacoes.map((t, idx) => (
+                                    <tr key={idx}>
+                                        <td>{t.data.split('-').reverse().join('/')}</td>
+                                        <td>{t.mesChave}</td>
+                                        <td><span className="client-name">{t.parceiro}</span></td>
+                                        <td>{t.servico}</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <span style={{
+                                                padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                                                backgroundColor: t.tipo === 'ENTRADA' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                color: t.tipo === 'ENTRADA' ? '#10b981' : '#ef4444'
+                                            }}>
+                                                {t.tipo}
+                                            </span>
+                                        </td>
+                                        <td className="money-cell" style={{ color: t.tipo === 'ENTRADA' ? '#10b981' : '#ef4444', fontWeight: 'bold', textAlign: 'right' }}>
+                                            {t.tipo === 'SAIDA' ? '-' : '+'}{formatarMoeda(t.valor)}
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                                        Nenhuma transação encontrada no período.
+                                    </td>
+                                </tr>
+                            )}
                         </tbody>
                     </table>
                 </div>
