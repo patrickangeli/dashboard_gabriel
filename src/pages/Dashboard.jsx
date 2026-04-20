@@ -736,7 +736,7 @@ export default function App() {
   return (
     <>
       <header style={{
-          backgroundImage: 'url(/CAPA_DASHBOARD.png)',
+          backgroundImage: 'url(/CAPA_DASHBOARD.svg)',
           backgroundSize: 'cover',
           backgroundPosition: 'right center',
           color: '#1f2937',
