@@ -94,6 +94,14 @@ export default function App() {
   const [filterStatusProjeto, setFilterStatusProjeto] = useState('all');
   const [searchParceiroGrafico, setSearchParceiroGrafico] = useState('');
 
+  // Table Column Filters
+  const [filterTableData, setFilterTableData] = useState('');
+  const [filterTableMes, setFilterTableMes] = useState('');
+  const [filterTableParceiro, setFilterTableParceiro] = useState('');
+  const [filterTableServico, setFilterTableServico] = useState('');
+  const [filterTableTipo, setFilterTableTipo] = useState('ALL');
+  const [filterTableValor, setFilterTableValor] = useState('');
+
   // Parsing Helpers
   const parseDataParaMes = (valor) => {
     if (!valor) return null;
@@ -724,26 +732,21 @@ export default function App() {
     ]
   } : null;
 
-  const listaTransacoes = useMemo(() => {
+  const listaTransacoesRaw = useMemo(() => {
     const transacoes = [];
-    filteredRegistros.forEach(reg => {
+    registros.forEach(reg => {
         if (reg.transacoes && reg.transacoes.length > 0) {
             reg.transacoes.forEach(t => {
                 const dataStr = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
-                let inside = true;
-                if (appliedDe && dataStr < appliedDe) inside = false;
-                if (appliedAte && dataStr > appliedAte) inside = false;
-                if (inside) {
-                    transacoes.push({
-                        id: t.id || Math.random().toString(36),
-                        data: dataStr,
-                        mesChave: formatarMesChave(dataStr.substring(0, 7), 'mensal'),
-                        parceiro: reg.parceiro,
-                        servico: reg.servico || 'N/A',
-                        tipo: t.tipo,
-                        valor: Number(t.valor)
-                    });
-                }
+                transacoes.push({
+                    id: t.id || Math.random().toString(36),
+                    data: dataStr,
+                    mesChave: formatarMesChave(dataStr.substring(0, 7), 'mensal'),
+                    parceiro: reg.parceiro,
+                    servico: reg.servico || 'N/A',
+                    tipo: t.tipo,
+                    valor: Number(t.valor)
+                });
             });
         } else {
             // Caso seja mock ou planilha sem transações detalhadas
@@ -776,7 +779,22 @@ export default function App() {
 
     // Ordenar da mais recente para a mais antiga
     return transacoes.sort((a, b) => b.data.localeCompare(a.data));
-  }, [filteredRegistros, appliedDe, appliedAte]);
+  }, [registros]);
+
+  const listaTransacoesFiltrada = useMemo(() => {
+    return listaTransacoesRaw.filter(t => {
+        const dataFormatada = t.data.length >= 10 ? t.data.substring(0, 10).split('-').reverse().join('/') : t.data.split('-').reverse().join('/');
+        
+        if (filterTableData && !dataFormatada.includes(filterTableData)) return false;
+        if (filterTableMes && !t.mesChave.toLowerCase().includes(filterTableMes.toLowerCase())) return false;
+        if (filterTableParceiro && !t.parceiro.toLowerCase().includes(filterTableParceiro.toLowerCase())) return false;
+        if (filterTableServico && !(t.servico || 'N/A').toLowerCase().includes(filterTableServico.toLowerCase())) return false;
+        if (filterTableTipo !== 'ALL' && t.tipo !== filterTableTipo) return false;
+        if (filterTableValor && !String(t.valor).includes(filterTableValor)) return false;
+        
+        return true;
+    });
+  }, [listaTransacoesRaw, filterTableData, filterTableMes, filterTableParceiro, filterTableServico, filterTableTipo, filterTableValor]);
 
   const chartPrevisaoOptions = {
     responsive: true, maintainAspectRatio: false,
@@ -1075,10 +1093,24 @@ export default function App() {
                                 <th style={{ textAlign: 'center' }}>Tipo</th>
                                 <th style={{ textAlign: 'right' }}>Valor</th>
                             </tr>
+                            <tr style={{ background: 'var(--card-bg)' }}>
+                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableData} onChange={e => setFilterTableData(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
+                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableMes} onChange={e => setFilterTableMes(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
+                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableParceiro} onChange={e => setFilterTableParceiro(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
+                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableServico} onChange={e => setFilterTableServico(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
+                                <th style={{ padding: '4px', textAlign: 'center' }}>
+                                    <select value={filterTableTipo} onChange={e => setFilterTableTipo(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }}>
+                                        <option value="ALL">Todos</option>
+                                        <option value="ENTRADA">Entrada</option>
+                                        <option value="SAIDA">Saída</option>
+                                    </select>
+                                </th>
+                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableValor} onChange={e => setFilterTableValor(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px', textAlign: 'right' }} /></th>
+                            </tr>
                         </thead>
                         <tbody>
-                            {listaTransacoes.length > 0 ? (
-                                listaTransacoes.map((t, idx) => (
+                            {listaTransacoesFiltrada.length > 0 ? (
+                                listaTransacoesFiltrada.map((t, idx) => (
                                     <tr key={idx}>
                                         <td>{t.data.length >= 10 ? t.data.substring(0, 10).split('-').reverse().join('/') : t.data.split('-').reverse().join('/')}</td>
                                         <td>{t.mesChave}</td>
