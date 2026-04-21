@@ -99,8 +99,10 @@ export default function App() {
   const [filterTableMes, setFilterTableMes] = useState('');
   const [filterTableParceiro, setFilterTableParceiro] = useState('');
   const [filterTableServico, setFilterTableServico] = useState('');
+  const [filterTableDescricao, setFilterTableDescricao] = useState('');
   const [filterTableTipo, setFilterTableTipo] = useState('ALL');
   const [filterTableValor, setFilterTableValor] = useState('');
+  const [tableSortConfig, setTableSortConfig] = useState({ key: 'data', direction: 'desc' });
 
   // Parsing Helpers
   const parseDataParaMes = (valor) => {
@@ -743,7 +745,8 @@ export default function App() {
                     data: dataStr,
                     mesChave: formatarMesChave(dataStr.substring(0, 7), 'mensal'),
                     parceiro: reg.parceiro,
-                    servico: reg.servico || 'N/A',
+                    servico: t.categoria || reg.servico || 'N/A',
+                    descricao: t.descricao || '',
                     tipo: t.tipo,
                     valor: Number(t.valor)
                 });
@@ -759,6 +762,7 @@ export default function App() {
                     mesChave: mesChaveFormatado,
                     parceiro: reg.parceiro,
                     servico: reg.servico || 'N/A',
+                    descricao: '',
                     tipo: 'ENTRADA',
                     valor: Number(reg.entrada)
                 });
@@ -770,6 +774,7 @@ export default function App() {
                     mesChave: mesChaveFormatado,
                     parceiro: reg.parceiro,
                     servico: reg.servico || 'N/A',
+                    descricao: '',
                     tipo: 'SAIDA',
                     valor: Number(reg.saida)
                 });
@@ -781,20 +786,75 @@ export default function App() {
     return transacoes.sort((a, b) => b.data.localeCompare(a.data));
   }, [registros]);
 
+  const handleTableSort = (key) => {
+    let direction = 'asc';
+    if (tableSortConfig.key === key && tableSortConfig.direction === 'asc') direction = 'desc';
+    setTableSortConfig({ key, direction });
+  };
+
   const listaTransacoesFiltrada = useMemo(() => {
-    return listaTransacoesRaw.filter(t => {
+    let filtrada = listaTransacoesRaw.filter(t => {
         const dataFormatada = t.data.length >= 10 ? t.data.substring(0, 10).split('-').reverse().join('/') : t.data.split('-').reverse().join('/');
         
         if (filterTableData && !dataFormatada.includes(filterTableData)) return false;
         if (filterTableMes && !t.mesChave.toLowerCase().includes(filterTableMes.toLowerCase())) return false;
         if (filterTableParceiro && !t.parceiro.toLowerCase().includes(filterTableParceiro.toLowerCase())) return false;
         if (filterTableServico && !(t.servico || 'N/A').toLowerCase().includes(filterTableServico.toLowerCase())) return false;
+        if (filterTableDescricao && !(t.descricao || '').toLowerCase().includes(filterTableDescricao.toLowerCase())) return false;
         if (filterTableTipo !== 'ALL' && t.tipo !== filterTableTipo) return false;
         if (filterTableValor && !String(t.valor).includes(filterTableValor)) return false;
         
         return true;
     });
-  }, [listaTransacoesRaw, filterTableData, filterTableMes, filterTableParceiro, filterTableServico, filterTableTipo, filterTableValor]);
+
+    filtrada.sort((a, b) => {
+      let aVal = a[tableSortConfig.key];
+      let bVal = b[tableSortConfig.key];
+
+      if (tableSortConfig.key === 'data') {
+        // Datas já estão em YYYY-MM-DD
+        if (aVal < bVal) return tableSortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return tableSortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      }
+
+      if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+      if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+
+      if (aVal < bVal) return tableSortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return tableSortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filtrada;
+  }, [listaTransacoesRaw, filterTableData, filterTableMes, filterTableParceiro, filterTableServico, filterTableDescricao, filterTableTipo, filterTableValor, tableSortConfig]);
+
+  const uniqueTableValues = useMemo(() => {
+     const dates = new Set();
+     const months = new Set();
+     const partners = new Set();
+     const services = new Set();
+     const descricoes = new Set();
+     const values = new Set();
+
+     listaTransacoesRaw.forEach(t => {
+         dates.add(t.data.length >= 10 ? t.data.substring(0, 10).split('-').reverse().join('/') : t.data.split('-').reverse().join('/'));
+         months.add(t.mesChave);
+         partners.add(t.parceiro);
+         services.add(t.servico || 'N/A');
+         if (t.descricao) descricoes.add(t.descricao);
+         values.add(String(t.valor));
+     });
+
+     return {
+         dates: Array.from(dates).sort(),
+         months: Array.from(months).sort(),
+         partners: Array.from(partners).sort(),
+         services: Array.from(services).sort(),
+         descricoes: Array.from(descricoes).sort(),
+         values: Array.from(values).sort((a, b) => Number(a) - Number(b))
+     };
+  }, [listaTransacoesRaw]);
 
   const chartPrevisaoOptions = {
     responsive: true, maintainAspectRatio: false,
@@ -1086,18 +1146,35 @@ export default function App() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Data</th>
-                                <th>Mês</th>
-                                <th>Cliente / Parceiro</th>
-                                <th>Serviço</th>
-                                <th style={{ textAlign: 'center' }}>Tipo</th>
-                                <th style={{ textAlign: 'right' }}>Valor</th>
+                                <th onClick={() => handleTableSort('data')} style={{ cursor: 'pointer' }}>Data {tableSortConfig.key === 'data' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                <th onClick={() => handleTableSort('mesChave')} style={{ cursor: 'pointer' }}>Mês {tableSortConfig.key === 'mesChave' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                <th onClick={() => handleTableSort('parceiro')} style={{ cursor: 'pointer' }}>Cliente / Parceiro {tableSortConfig.key === 'parceiro' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                <th onClick={() => handleTableSort('servico')} style={{ cursor: 'pointer' }}>Categoria {tableSortConfig.key === 'servico' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                <th onClick={() => handleTableSort('descricao')} style={{ cursor: 'pointer' }}>Descrição {tableSortConfig.key === 'descricao' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                <th onClick={() => handleTableSort('tipo')} style={{ textAlign: 'center', cursor: 'pointer' }}>Tipo {tableSortConfig.key === 'tipo' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                                <th onClick={() => handleTableSort('valor')} style={{ textAlign: 'right', cursor: 'pointer' }}>Valor {tableSortConfig.key === 'valor' ? (tableSortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                             </tr>
                             <tr style={{ background: 'var(--card-bg)' }}>
-                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableData} onChange={e => setFilterTableData(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
-                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableMes} onChange={e => setFilterTableMes(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
-                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableParceiro} onChange={e => setFilterTableParceiro(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
-                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableServico} onChange={e => setFilterTableServico(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} /></th>
+                                <th style={{ padding: '4px' }}>
+                                    <input list="dl-dates" type="text" placeholder="Filtrar..." value={filterTableData} onChange={e => setFilterTableData(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                                    <datalist id="dl-dates">{uniqueTableValues.dates.map((d, i) => <option key={i} value={d} />)}</datalist>
+                                </th>
+                                <th style={{ padding: '4px' }}>
+                                    <input list="dl-months" type="text" placeholder="Filtrar..." value={filterTableMes} onChange={e => setFilterTableMes(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                                    <datalist id="dl-months">{uniqueTableValues.months.map((m, i) => <option key={i} value={m} />)}</datalist>
+                                </th>
+                                <th style={{ padding: '4px' }}>
+                                    <input list="dl-partners" type="text" placeholder="Filtrar..." value={filterTableParceiro} onChange={e => setFilterTableParceiro(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                                    <datalist id="dl-partners">{uniqueTableValues.partners.map((p, i) => <option key={i} value={p} />)}</datalist>
+                                </th>
+                                <th style={{ padding: '4px' }}>
+                                    <input list="dl-services" type="text" placeholder="Filtrar..." value={filterTableServico} onChange={e => setFilterTableServico(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                                    <datalist id="dl-services">{uniqueTableValues.services.map((s, i) => <option key={i} value={s} />)}</datalist>
+                                </th>
+                                <th style={{ padding: '4px' }}>
+                                    <input list="dl-desc" type="text" placeholder="Filtrar..." value={filterTableDescricao} onChange={e => setFilterTableDescricao(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }} />
+                                    <datalist id="dl-desc">{uniqueTableValues.descricoes.map((s, i) => <option key={i} value={s} />)}</datalist>
+                                </th>
                                 <th style={{ padding: '4px', textAlign: 'center' }}>
                                     <select value={filterTableTipo} onChange={e => setFilterTableTipo(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px' }}>
                                         <option value="ALL">Todos</option>
@@ -1105,7 +1182,10 @@ export default function App() {
                                         <option value="SAIDA">Saída</option>
                                     </select>
                                 </th>
-                                <th style={{ padding: '4px' }}><input type="text" placeholder="Filtrar..." value={filterTableValor} onChange={e => setFilterTableValor(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px', textAlign: 'right' }} /></th>
+                                <th style={{ padding: '4px' }}>
+                                    <input list="dl-values" type="text" placeholder="Filtrar..." value={filterTableValor} onChange={e => setFilterTableValor(e.target.value)} style={{ width: '100%', padding: '4px', fontSize: '12px', border: '1px solid var(--border)', borderRadius: '4px', textAlign: 'right' }} />
+                                    <datalist id="dl-values">{uniqueTableValues.values.map((v, i) => <option key={i} value={v} />)}</datalist>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1116,6 +1196,7 @@ export default function App() {
                                         <td>{t.mesChave}</td>
                                         <td><span className="client-name">{t.parceiro}</span></td>
                                         <td>{t.servico}</td>
+                                        <td><span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t.descricao || '-'}</span></td>
                                         <td style={{ textAlign: 'center' }}>
                                             <span style={{
                                                 padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',

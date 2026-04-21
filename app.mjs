@@ -57,37 +57,45 @@ router.get('/dashboard', async (req, res) => {
       where: { tipo: 'SAIDA' }
     });
 
-    const avulsosPorDia = {};
-    
     // Processa transações soltas
     transacoesAvulsas.forEach(t => {
-      const dia = t.dataPagamento ? t.dataPagamento.toISOString().substring(0, 10) : t.criadoEm.toISOString().substring(0, 10);
-      if (!avulsosPorDia[dia]) avulsosPorDia[dia] = { entrada: 0, saida: 0 };
-      
-      if (t.tipo === 'ENTRADA') avulsosPorDia[dia].entrada += Number(t.valor);
-      if (t.tipo === 'SAIDA') avulsosPorDia[dia].saida += Number(t.valor);
+      registros.push({
+        id: `avulso-trans-${t.id}`,
+        parceiro: 'Lançamentos Avulsos (Sem Projeto)',
+        servico: t.categoria || 'Despesas e Receitas Gerais',
+        status: 'Contábil',
+        valorFechado: 0,
+        entrada: t.tipo === 'ENTRADA' ? Number(t.valor) : 0,
+        saida: t.tipo === 'SAIDA' ? Number(t.valor) : 0,
+        valorRestante: 0,
+        mesChave: t.dataPagamento ? t.dataPagamento.toISOString().substring(0, 10) : t.criadoEm.toISOString().substring(0, 10),
+        transacoes: [t] // Send exactly this transaction so metadata is preserved
+      });
     });
 
     // Processa saídas do caixa
     previsoesSaida.forEach(p => {
-      const dia = p.dataPrevista ? p.dataPrevista.toISOString().substring(0, 10) : p.criadoEm.toISOString().substring(0, 10);
-      if (!avulsosPorDia[dia]) avulsosPorDia[dia] = { entrada: 0, saida: 0 };
-      
-      avulsosPorDia[dia].saida += Number(p.valor);
-    });
-
-    Object.keys(avulsosPorDia).forEach((dia, idx) => {
+      // Create a dummy transaction object to pass downstream
+      const dummyTrans = {
+          id: `prev-${p.id}`,
+          tipo: p.tipo,
+          valor: p.valor,
+          dataPagamento: p.dataPrevista || p.criadoEm,
+          criadoEm: p.criadoEm,
+          categoria: p.categoria || 'Despesas e Receitas Gerais',
+          descricao: p.descricao || ''
+      };
       registros.push({
-        id: `avulsos-${idx}`,
+        id: `avulso-prev-${p.id}`,
         parceiro: 'Lançamentos Avulsos (Sem Projeto)',
-        servico: 'Despesas e Receitas Gerais',
+        servico: p.categoria || 'Despesas e Receitas Gerais',
         status: 'Contábil',
         valorFechado: 0,
-        entrada: avulsosPorDia[dia].entrada,
-        saida: avulsosPorDia[dia].saida,
+        entrada: 0,
+        saida: Number(p.valor),
         valorRestante: 0,
-        mesChave: dia,
-        transacoes: []
+        mesChave: p.dataPrevista ? p.dataPrevista.toISOString().substring(0, 10) : p.criadoEm.toISOString().substring(0, 10),
+        transacoes: [dummyTrans]
       });
     });
 
