@@ -1,0 +1,21 @@
+--- app.mjs
++++ app.mjs
+@@ -37,6 +37,7 @@
+         entrada: entrada,
+         saida: saida,
+         valorRestante: p.status.toLowerCase() === 'concluído' ? valorFechado : (valorFechado - entrada),
+-        mesChave: dataChave
++        mesChave: dataChave,
++        transacoes: p.transacoes
+       };
+     });
+@@ -82,7 +83,8 @@
+         entrada: avulsosPorDia[dia].entrada,
+         saida: avulsosPorDia[dia].saida,
+         valorRestante: 0,
+-        mesChave: dia
++        mesChave: dia,
++        transacoes: []
+       });
+     });
+ 

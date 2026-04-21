@@ -747,8 +747,8 @@ export default function App() {
             });
         } else {
             // Caso seja mock ou planilha sem transações detalhadas
-            const dataStr = reg.mesChave ? `${reg.mesChave}-01` : 'Sem Data';
-            const mesChaveFormatado = reg.mesChave ? formatarMesChave(reg.mesChave, 'mensal') : 'Sem Data';
+            const dataStr = reg.mesChave ? (reg.mesChave.length >= 10 ? reg.mesChave.substring(0, 10) : `${reg.mesChave}-01`) : 'Sem Data';
+            const mesChaveFormatado = reg.mesChave ? formatarMesChave(reg.mesChave.substring(0, 7), 'mensal') : 'Sem Data';
             if (reg.entrada > 0) {
                 transacoes.push({
                     id: Math.random().toString(36),
@@ -1080,7 +1080,7 @@ export default function App() {
                             {listaTransacoes.length > 0 ? (
                                 listaTransacoes.map((t, idx) => (
                                     <tr key={idx}>
-                                        <td>{t.data.split('-').reverse().join('/')}</td>
+                                        <td>{t.data.length >= 10 ? t.data.substring(0, 10).split('-').reverse().join('/') : t.data.split('-').reverse().join('/')}</td>
                                         <td>{t.mesChave}</td>
                                         <td><span className="client-name">{t.parceiro}</span></td>
                                         <td>{t.servico}</td>

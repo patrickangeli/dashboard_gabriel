@@ -1,0 +1,93 @@
+--- src/pages/Dashboard.jsx
++++ src/pages/Dashboard.jsx
+@@ -350,11 +350,33 @@
+     const existeDataValida = registros.some(reg => Boolean(reg.mesChave));
+     if (!existeDataValida) return registros;
++    
+     return registros.filter(reg => {
+-        if (!reg.mesChave) return !appliedDe && !appliedAte;
+-        if (appliedDe && reg.mesChave < appliedDe) return false;
+-        if (appliedAte && reg.mesChave > appliedAte) return false;
++        // Avulsos ou Mock Data sem transacoes
++        if (!reg.transacoes || reg.transacoes.length === 0) {
++            if (!reg.mesChave) return !appliedDe && !appliedAte;
++            if (appliedDe && reg.mesChave < appliedDe) return false;
++            if (appliedAte && reg.mesChave > appliedAte) return false;
++            return true;
++        }
++        
++        // Projetos
++        let createdAt = reg.criadoEm || reg.mesChave;
++        let wasCreatedInPeriod = true;
++        if (appliedDe && createdAt < appliedDe) wasCreatedInPeriod = false;
++        if (appliedAte && createdAt > appliedAte) wasCreatedInPeriod = false;
++
++        let hasTransactionInPeriod = false;
++        reg.transacoes.forEach(t => {
++            const d = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
++            let inside = true;
++            if (appliedDe && d < appliedDe) inside = false;
++            if (appliedAte && d > appliedAte) inside = false;
++            if (inside) hasTransactionInPeriod = true;
++        });
++
++        if (!wasCreatedInPeriod && !hasTransactionInPeriod) return false;
+         return true;
+-    });
++    }).map(reg => {
++        if (!reg.transacoes || reg.transacoes.length === 0) return reg;
++        
++        let validEntrada = 0;
++        let validSaida = 0;
++        reg.transacoes.forEach(t => {
++            const d = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
++            let inside = true;
++            if (appliedDe && d < appliedDe) inside = false;
++            if (appliedAte && d > appliedAte) inside = false;
++            if (inside) {
++                if (t.tipo === 'ENTRADA') validEntrada += Number(t.valor);
++                if (t.tipo === 'SAIDA') validSaida += Number(t.valor);
++            }
++        });
++
++        let createdAt = reg.criadoEm || reg.mesChave;
++        let wasCreated = true;
++        if (appliedDe && createdAt < appliedDe) wasCreated = false;
++        if (appliedAte && createdAt > appliedAte) wasCreated = false;
++
++        return {
++            ...reg,
++            entrada: validEntrada,
++            saida: validSaida,
++            valorFechado: wasCreated ? reg.valorFechado : 0,
++            valorRestante: wasCreated ? (reg.valorFechado - validEntrada) : 0
++        };
++    });
+   }, [registros, appliedDe, appliedAte]);
+ 
+   const dashboardData = useMemo(() => {
+@@ -370,5 +392,20 @@
+ 
+-        if (reg.mesChave) {
+-            if (!fluxoPorMes[reg.mesChave]) fluxoPorMes[reg.mesChave] = { entradas: 0, saidas: 0 };
+-            fluxoPorMes[reg.mesChave].entradas += reg.entrada;
+-            fluxoPorMes[reg.mesChave].saidas += reg.saida;
++        if (!reg.transacoes || reg.transacoes.length === 0) {
++            if (reg.mesChave) {
++                if (!fluxoPorMes[reg.mesChave]) fluxoPorMes[reg.mesChave] = { entradas: 0, saidas: 0 };
++                fluxoPorMes[reg.mesChave].entradas += reg.entrada;
++                fluxoPorMes[reg.mesChave].saidas += reg.saida;
++            }
++        } else {
++            reg.transacoes.forEach(t => {
++                const d = t.dataPagamento ? t.dataPagamento.substring(0, 10) : t.criadoEm.substring(0, 10);
++                let inside = true;
++                if (appliedDe && d < appliedDe) inside = false;
++                if (appliedAte && d > appliedAte) inside = false;
++                if (inside) {
++                    if (!fluxoPorMes[d]) fluxoPorMes[d] = { entradas: 0, saidas: 0 };
++                    if (t.tipo === 'ENTRADA') fluxoPorMes[d].entradas += Number(t.valor);
++                    if (t.tipo === 'SAIDA') fluxoPorMes[d].saidas += Number(t.valor);
++                }
++            });
+         }
